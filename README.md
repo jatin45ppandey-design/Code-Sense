@@ -1,451 +1,487 @@
-﻿CodeSense
+CodeSense
 
 <p align="center">
-  <strong>AI-Powered Codebase Intelligence Platform</strong>
-</p>
-
-<p align="center">
+  <strong>AI-Powered Codebase Intelligence Platform</strong><br/>
   <em>Make Sense of Any Codebase.</em>
 </p>
 
-Overview
+About CodeSense
 
-CodeSense helps developers understand unfamiliar GitHub repositories through repository-aware AI, semantic search, Retrieval-Augmented Generation (RAG), and context-aware chat.
+CodeSense helps developers understand unfamiliar GitHub repositories using semantic search, Retrieval-Augmented Generation (RAG), and repository-aware AI chat.
 
-Instead of sending an entire repository to a generic chatbot, CodeSense:
-
-connects to GitHub,
-
-ingests relevant repository files,
-
-chunks and embeds the code,
-
-stores semantic vectors in PGVector,
-
-retrieves only the most relevant context for each question,
-
-generates repository-grounded answers,
-
-streams responses with source citations.
+Instead of sending the entire repository to an AI model for every question, CodeSense first indexes the codebase into a searchable vector knowledge base. When a user asks a question, only the most relevant code is retrieved and provided to the AI model.
 
 Status: Working prototype under active development.
 
-Why CodeSense?
+The Problem
 
-Understanding a new codebase can take hours or days.
+Understanding an unfamiliar codebase takes time.
 
-Developers usually need to:
+A developer may need to manually:
 
-inspect folders and files manually,
+explore folders and files,
 
 trace authentication and data flow,
 
-locate feature implementations,
+find where a feature is implemented,
 
 identify entry points and configuration,
 
 understand relationships between modules,
 
-search through unfamiliar code repeatedly.
+repeatedly search through hundreds of files.
 
-Traditional keyword search works well for exact text, but it is weaker for conceptual questions such as:
+Traditional keyword search finds exact text, but it does not always answer conceptual questions such as:
 
-Where is authentication handled?
+“Where is authentication handled?”
+“How does repository indexing work?”
+“Which files are responsible for this feature?”
+“Explain the architecture of this project.”
 
-How does indexing work?
+CodeSense turns a GitHub repository into an interactive AI knowledge base.
 
-Which files are responsible for this feature?
+How CodeSense Works
 
-How does data move through the application?
+The complete workflow has two stages:
 
-What is the overall architecture of this repository?
+Index the repository once
 
-CodeSense turns a repository into an interactive, searchable AI knowledge base.
+Ask questions many times
+
+flowchart TB
+
+    subgraph S1["STEP 1 — Connect Repository"]
+        A["Sign in with GitHub"] --> B["Choose Repository"]
+        B --> C["Fetch Repository Source"]
+    end
+
+    subgraph S2["STEP 2 — Build Knowledge Base"]
+        C --> D["Filter Useful Files"]
+        D --> E["Split Code into Chunks"]
+        E --> F["Generate Embeddings"]
+        F --> G[("PGVector Knowledge Base")]
+    end
+
+    subgraph S3["STEP 3 — Ask a Question"]
+        H["Developer asks a question"] --> I["Search Relevant Code"]
+        G --> I
+        I --> J["Build RAG Context"]
+    end
+
+    subgraph S4["STEP 4 — Generate Answer"]
+        J --> K["AI Chat Model"]
+        K --> L["Repository-Grounded Answer"]
+        L --> M["Source Citations"]
+        M --> N["Stream Answer to UI"]
+    end
+
+In simple words
+
+GitHub Repository
+      ↓
+Index useful code once
+      ↓
+Store searchable knowledge in PGVector
+      ↓
+User asks a question
+      ↓
+Find only the most relevant code
+      ↓
+Give that code to the AI
+      ↓
+Return an answer with repository context
+
+System Architecture
+
+flowchart LR
+
+    USER["User"]
+
+    subgraph FRONTEND["Frontend"]
+        UI["Next.js + TypeScript"]
+    end
+
+    subgraph BACKEND["Spring Boot Backend"]
+        API["REST APIs"]
+        AUTH["GitHub OAuth2"]
+        INDEX["Indexing Service"]
+        RAG["RAG / Chat Service"]
+        SSE["SSE Streaming"]
+    end
+
+    subgraph DATA["Data Layer"]
+        DB[("PostgreSQL")]
+        VECTOR[("PGVector")]
+    end
+
+    subgraph EXTERNAL["External / AI Services"]
+        GITHUB["GitHub API"]
+        EMB["Embedding Model"]
+        LLM["Chat Model"]
+    end
+
+    USER --> UI
+    UI --> API
+
+    API --> AUTH
+    AUTH --> GITHUB
+
+    API --> INDEX
+    INDEX --> GITHUB
+    INDEX --> EMB
+    EMB --> VECTOR
+
+    API --> RAG
+    RAG --> VECTOR
+    RAG --> LLM
+
+    API --> DB
+    RAG --> DB
+
+    LLM --> SSE
+    SSE --> UI
+
+Responsibility of each layer
+
+Layer
+
+Responsibility
+
+Frontend
+
+Login, repositories, indexing progress, chat UI
+
+Spring Boot Backend
+
+Authentication, repository operations, indexing, RAG, chat
+
+GitHub API
+
+Repository metadata and source access
+
+Embedding Model
+
+Converts code and questions into semantic vectors
+
+PGVector
+
+Stores and searches repository embeddings
+
+Chat Model
+
+Generates answers from retrieved repository context
+
+PostgreSQL
+
+Stores users, repositories, chats and application data
+
+SSE
+
+Streams AI responses to the frontend
+
+RAG Explained
+
+RAG stands for Retrieval-Augmented Generation.
+
+CodeSense does not blindly ask the AI model to understand the whole repository every time.
+
+It first retrieves the most relevant code.
+
+A. Repository Indexing
+
+This happens when a repository is indexed.
+
+flowchart LR
+    A["Source Files"] --> B["Filter"]
+    B --> C["Chunk Code"]
+    C --> D["Create Embeddings"]
+    D --> E[("PGVector")]
+
+Example:
+
+UserService.java
+SecurityConfig.java
+ChatService.java
+        ↓
+small searchable chunks
+        ↓
+semantic vectors
+        ↓
+PGVector
+
+B. Question Answering
+
+This happens whenever the developer asks a question.
+
+flowchart LR
+    Q["User Question"] --> QE["Question Embedding"]
+    QE --> SEARCH["Similarity Search"]
+    DB[("PGVector")] --> SEARCH
+    SEARCH --> CODE["Top Relevant Code Chunks"]
+    CODE --> PROMPT["Question + Retrieved Code"]
+    PROMPT --> AI["Chat Model"]
+    AI --> ANSWER["Grounded Answer + Citations"]
+
+Example
+
+Question:
+"How does GitHub login work?"
+        ↓
+CodeSense searches PGVector
+        ↓
+Finds:
+SecurityConfig.java
+GithubOAuth2UserService.java
+AuthController.java
+        ↓
+Only this relevant context goes to the AI
+        ↓
+Repository-specific explanation
+
+Repository Isolation
+
+Each repository has its own indexed context.
+
+flowchart TB
+    USER["Authenticated User"]
+
+    USER --> RA["Repository A"]
+    USER --> RB["Repository B"]
+
+    RA --> VA[("Vectors: Repo A")]
+    RB --> VB[("Vectors: Repo B")]
+
+    QA["Chat: Repo A"] --> VA
+    QB["Chat: Repo B"] --> VB
+
+A chat for Repository A should only retrieve vectors belonging to Repository A.
+
+GitHub Authentication
+
+sequenceDiagram
+    actor User
+    participant UI as CodeSense Frontend
+    participant API as Spring Boot Backend
+    participant GH as GitHub
+
+    User->>UI: Click "Sign in with GitHub"
+    UI->>API: Start OAuth login
+    API->>GH: Redirect for authorization
+    GH->>User: Ask for permission
+    User->>GH: Approve
+    GH->>API: OAuth callback
+    API->>API: Create authenticated session
+    API->>UI: Redirect to CodeSense
+    UI->>API: Request current user
+    API-->>UI: User authenticated
+
+GitHub credentials are not collected directly by CodeSense.
 
 Core Features
 
-Currently Implemented
+Implemented
 
-GitHub OAuth2 authentication
+GitHub OAuth2 login
 
-Authenticated application sessions
-
-GitHub repository access
+Authenticated user sessions
 
 Repository synchronization
 
-Repository indexing
+Repository selection
 
-Source-file filtering
+Source-file fetching
+
+Code-file filtering
 
 Code chunking
 
 Semantic embeddings
 
-PostgreSQL + PGVector vector storage
+PostgreSQL + PGVector
 
-Repository-scoped semantic retrieval
+Repository-scoped vector retrieval
 
-Retrieval-Augmented Generation
+RAG-based chat
 
-Repository-aware chat
+Source citations
 
-SSE-based response streaming
-
-Source-file citations
+SSE streaming
 
 Chat/session persistence
 
+Indexing progress tracking
+
+Indexing failure states
+
 Repository isolation
 
-Indexing progress and failure states
-
-Local Ollama support
+Local Ollama-based AI
 
 Planned / In Progress
 
 Add Repository by URL
 
-Exact commit-SHA-pinned indexing
+Commit-SHA-pinned indexing
 
-Commit-addressed archive ingestion
+Commit-addressed GitHub archive ingestion
 
-Repository overview generation
+Repository overview
 
 Better line-level citations
 
 Function/class-aware chunking
 
-Hybrid vector + keyword/symbol retrieval
+Hybrid semantic + keyword retrieval
 
 Incremental re-indexing
 
-Hosted AI provider support
+Hosted OpenAI / Gemini provider option
 
 Architecture/dependency visualization
 
-Pull-request and change-impact understanding
+Pull-request understanding
 
-How CodeSense Works
+Change-impact analysis
 
-flowchart TD
-    A[GitHub Login] --> B[Select Repository]
-    B --> C[Fetch Repository Files]
-    C --> D[Filter Useful Source Files]
-    D --> E[Chunk Code]
-    E --> F[Generate Embeddings]
-    F --> G[(PGVector)]
+Tech Stack
 
-    H[Developer Question] --> I[Embed Question]
-    I --> J[Semantic Retrieval]
-    G --> J
-    J --> K[Relevant Repository Context]
-    K --> L[RAG Prompt]
-    H --> L
-    L --> M[Chat Model]
-    M --> N[Grounded Answer]
-    N --> O[Citations + SSE Streaming]
-
-System Architecture
-
-flowchart LR
-    U[User] --> FE[Next.js Frontend]
-
-    FE -->|REST / SSE| BE[Spring Boot Backend]
-
-    BE --> AUTH[Spring Security + GitHub OAuth2]
-    AUTH --> GH[GitHub API]
-
-    BE --> DB[(PostgreSQL)]
-    BE --> VS[(PGVector)]
-
-    GH --> IDX[Repository Indexing Pipeline]
-    IDX --> FILTER[File Filtering]
-    FILTER --> CHUNK[Code Chunking]
-    CHUNK --> EMB[Embedding Model]
-    EMB --> VS
-
-    FE --> CHAT[Repository Chat]
-    CHAT --> BE
-
-    BE --> RET[Semantic Retrieval]
-    VS --> RET
-
-    RET --> RAG[RAG Context Builder]
-    RAG --> LLM[Chat Model]
-    LLM --> BE
-
-    BE -->|SSE Stream| FE
-
-RAG Pipeline
-
-CodeSense uses Retrieval-Augmented Generation so the AI answers using repository context rather than relying only on general model knowledge.
-
-Indexing Flow
-
-flowchart LR
-    A[Repository File] --> B[Filter]
-    B --> C[Chunk]
-    C --> D[Embedding]
-    D --> E[(PGVector)]
-
-Question-Answer Flow
-
-flowchart LR
-    A[Developer Question] --> B[Question Embedding]
-    B --> C[Similarity Search]
-    C --> D[Relevant Code Chunks]
-    D --> E[RAG Context]
-    E --> F[Chat Model]
-    F --> G[Grounded Answer]
-    G --> H[Source Citations]
-
-Technology Stack
-
-Layer
+Area
 
 Technology
-
-Purpose
 
 Frontend
 
 Next.js + TypeScript
 
-Repository UI, authentication flow, chat interface
-
 Backend
 
 Spring Boot
-
-APIs, indexing, RAG, chat orchestration
 
 Security
 
 Spring Security
 
-Sessions and OAuth security
-
 Authentication
 
 GitHub OAuth2
-
-GitHub identity and repository access
 
 Database
 
 PostgreSQL
 
-Users, repositories, chat/session data
-
-Vector Store
+Vector Database
 
 PGVector
 
-Semantic vector storage and retrieval
+Current Embedding Model
 
-Embeddings
+nomic-embed-text via Ollama
 
-Ollama + nomic-embed-text
+Current Chat Model
 
-Local embeddings
-
-Chat Model
-
-Ollama + qwen3.5:2b
-
-Local answer generation
+qwen3.5:2b via Ollama
 
 Streaming
 
 Server-Sent Events
 
-Live incremental AI responses
-
-Containers
+Local Infrastructure
 
 Docker Compose
 
-Local PostgreSQL + PGVector setup
+Current AI Setup
 
-Current Local AI Configuration
+Chat Model       → qwen3.5:2b
+Embedding Model  → nomic-embed-text
+Vector Store     → PostgreSQL + PGVector
+Vector Dimension → 768
 
-Chat Model      : qwen3.5:2b
-Embedding Model : nomic-embed-text
-Vector Store    : PostgreSQL + PGVector
-Vector Dimension: 768
+The AI layer is replaceable.
 
-The architecture is designed so the AI provider can later be replaced with a hosted provider such as OpenAI or Gemini without redesigning the entire RAG pipeline.
+For cloud deployment, CodeSense can later use hosted models such as OpenAI or Gemini while keeping the same repository → retrieval → RAG architecture.
 
-Repository Isolation
+Planned Feature — Add Repository by URL
 
-Repository isolation is important because CodeSense can work with multiple repositories.
+The goal is to allow a user to paste a GitHub repository URL instead of only selecting repositories from the synchronized GitHub account list.
 
-flowchart TD
-    U[Authenticated User] --> R1[Repository A]
-    U --> R2[Repository B]
+flowchart TB
+    A["Paste GitHub Repository URL"]
+    B["Validate github.com URL"]
+    C["Extract owner / repository"]
+    D["Fetch canonical repository metadata"]
+    E{"User has access?"}
+    F["Show safe access error"]
+    G["Resolve exact commit SHA"]
+    H["Download source snapshot"]
+    I["Apply file filtering"]
+    J["Reuse existing indexing pipeline"]
+    K[("PGVector")]
+    L["Repository ready for chat"]
 
-    R1 --> V1[(Vectors A)]
-    R2 --> V2[(Vectors B)]
+    A --> B
+    B --> C
+    C --> D
+    D --> E
 
-    Q1[Chat for Repository A] --> V1
-    Q2[Chat for Repository B] --> V2
+    E -- No --> F
+    E -- Yes --> G
 
-Retrieval is scoped to the active repository so context from one repository is not intentionally mixed into another repository's chat.
+    G --> H
+    H --> I
+    I --> J
+    J --> K
+    K --> L
 
-GitHub Authentication Flow
+Why pin the exact commit?
 
-sequenceDiagram
-    participant U as User
-    participant F as Next.js Frontend
-    participant B as Spring Boot Backend
-    participant G as GitHub
+A branch such as main keeps changing.
 
-    U->>F: Sign in with GitHub
-    F->>B: Start OAuth login
-    B->>G: Redirect to GitHub authorization
-    G->>U: User authorizes CodeSense
-    G->>B: OAuth callback
-    B->>B: Create authenticated session
-    B->>F: Redirect to application
-    F->>B: Fetch current user
-    B->>F: Authenticated user data
+main
+ ├── Commit A
+ ├── Commit B
+ └── Commit C
 
-Repository Indexing
+CodeSense should resolve the current branch to one exact commit:
 
-When a repository is selected, CodeSense processes only useful source content.
+main
+  ↓
+Commit SHA: abc123...
+  ↓
+Index this exact source snapshot
 
-The indexing pipeline is designed to:
+Benefits:
 
-ignore unnecessary generated/build/vendor files,
+consistent indexing,
 
-process useful source files,
+stable source version,
 
-split large files into searchable chunks,
-
-generate semantic embeddings,
-
-store chunk metadata with vectors,
-
-track progress and failures,
-
-keep repository context isolated.
-
-flowchart TD
-    A[Repository] --> B[Fetch File Tree]
-    B --> C{Useful File?}
-    C -->|No| D[Skip]
-    C -->|Yes| E[Read Content]
-    E --> F[Chunk]
-    F --> G[Embed]
-    G --> H[(PGVector)]
-
-Planned: Add Repository by URL
-
-A major planned capability is the ability to paste a GitHub repository URL directly.
-
-flowchart TD
-    A[Paste GitHub URL] --> B[Validate URL]
-    B --> C[Extract Owner + Repository]
-    C --> D[Fetch Canonical GitHub Metadata]
-    D --> E{Accessible?}
-    E -->|No| F[Return Safe Access Error]
-    E -->|Yes| G[Resolve Exact Commit SHA]
-    G --> H[Fetch Commit-Addressed Source Archive]
-    H --> I[Safe Archive Processing]
-    I --> J[Reuse Existing Indexing Pipeline]
-    J --> K[PGVector]
-    K --> L[RAG Chat]
-
-Why use an exact commit SHA?
-
-A branch such as main changes over time.
-
-Indexing an immutable commit provides:
-
-reproducible repository snapshots,
-
-more stable citations,
-
-cleaner re-indexing logic,
+better citations,
 
 easier future update detection.
-
-Why use a commit-addressed archive?
-
-Compared with making one API call per file, an archive can:
-
-reduce GitHub API request count,
-
-keep all fetched files from one exact commit,
-
-avoid requiring Git on the server,
-
-reuse the existing filtering/chunking pipeline afterward.
-
-Archive processing must still enforce path, size, entry-count, and extraction safety limits.
-
-Security
-
-CodeSense handles GitHub authorization data and source code, so security is part of the architecture.
-
-Current / Required Security Practices
-
-GitHub authentication uses OAuth2.
-
-GitHub passwords are never collected by CodeSense.
-
-Access tokens remain on the backend.
-
-Stored GitHub tokens should remain encrypted at rest.
-
-API keys and secrets belong in environment variables or a secret manager.
-
-Repository access must be verified server-side.
-
-Private repository data must remain isolated per authorized user.
-
-Repository content should be treated as untrusted data, not model instructions.
-
-Secrets must never be exposed to frontend JavaScript.
-
-Secrets accidentally committed or exposed should be rotated immediately.
-
-Never Commit
-
-.env
-.env.local
-API keys
-OAuth client secrets
-database passwords
-GitHub access tokens
-encryption passwords
-encryption salts
 
 Project Structure
 
 CodeSense/
+│
 ├── backend/
-│   └── Spring Boot application
+│   └── Spring Boot backend
 │
 ├── client/
 │   └── Next.js frontend
 │
 ├── docker/
-│   └── PostgreSQL / PGVector initialization
+│   └── PostgreSQL / PGVector setup
 │
-├── compose.yml
-│   or docker-compose.yml
-│
+├── compose.yml / docker-compose.yml
 ├── README.md
-├── LICENSE
+├── LICENSE.md
 └── .env
 
-.env should stay local and must not be committed.
+.env must not be committed.
 
 Local Setup
 
-Prerequisites
+Requirements
 
 Install:
 
@@ -455,20 +491,18 @@ Docker Desktop
 
 Node.js + npm
 
-Java / JDK compatible with the project
+Java / JDK compatible with the backend
 
 Ollama
 
 1. Clone
 
-git clone <YOUR_GITHUB_REPOSITORY_URL>
+git clone <YOUR_REPOSITORY_URL>
 cd CodeSense
 
 2. Environment Variables
 
-Create the environment file used by the backend and Docker configuration.
-
-Example:
+Create the required local .env file.
 
 DATABASE_URL=jdbc:postgresql://localhost:5433/devguide
 DATABASE_USERNAME=devguide
@@ -483,11 +517,9 @@ TOKEN_ENCRYPTION_SALT=<16_HEX_CHARACTERS>
 
 FRONTEND_URL=http://localhost:3000
 
-Do not commit real values.
+Never put actual secrets in the repository.
 
 3. Start PostgreSQL + PGVector
-
-From the directory containing the Compose file:
 
 docker compose up -d
 
@@ -495,18 +527,18 @@ Check:
 
 docker compose ps
 
-4. Prepare Ollama Models
+4. Prepare Ollama
 
 ollama pull qwen3.5:2b
 ollama pull nomic-embed-text
 
-Ensure the Ollama server is running before repository indexing begins.
+Ensure Ollama is running before indexing.
 
 5. Start Backend
 
 cd backend
 
-Windows:
+Windows PowerShell:
 
 .\mvnw spring-boot:run
 
@@ -524,67 +556,87 @@ http://localhost:3000
 
 GitHub OAuth Configuration
 
-For local development, the GitHub OAuth App typically uses:
+For local development:
 
 Homepage URL
 http://localhost:3000
 
-Authorization callback URL
+Authorization Callback URL
 http://localhost:8080/login/oauth2/code/github
 
-The GitHub OAuth client secret must remain on the backend.
+Keep the OAuth client secret only on the backend.
+
+Security
+
+CodeSense works with source code and GitHub authorization data.
+
+Important practices:
+
+GitHub access tokens stay on the backend.
+
+Stored tokens should remain encrypted.
+
+Repository access is checked server-side.
+
+Retrieval is scoped to the active repository.
+
+Private repository content must remain isolated.
+
+Repository files are treated as untrusted data.
+
+AI models should treat repository text as evidence, not system instructions.
+
+API keys and secrets belong in environment variables or a secret manager.
+
+Never commit
+
+.env
+.env.local
+API keys
+GitHub access tokens
+OAuth client secrets
+database passwords
+encryption passwords
+encryption salts
 
 Deployment Direction
 
-The current implementation is local-first.
-
-Local / Self-Hosted
+Current Local Architecture
 
 flowchart LR
-    A[Next.js] --> B[Spring Boot]
-    B --> C[(PostgreSQL + PGVector)]
-    B --> D[Ollama]
+    UI["Next.js"] --> API["Spring Boot"]
+    API --> DB[("PostgreSQL + PGVector")]
+    API --> OLLAMA["Ollama"]
+    API --> GH["GitHub API"]
 
-Advantages
+This keeps AI inference local but requires enough CPU/GPU/RAM on the deployment machine.
 
-local model execution,
-
-no mandatory per-request AI API cost,
-
-more control over source-code handling.
-
-Trade-off
-
-The deployment machine needs enough compute to run the models.
-
-Cloud-Friendly Production Architecture
+Cloud-Friendly Architecture
 
 flowchart LR
-    A[Next.js Frontend] --> B[Spring Boot Backend]
-    B --> C[(Managed PostgreSQL + PGVector)]
-    B --> D[Hosted Embedding Model]
-    B --> E[Hosted Chat Model]
-    B --> F[GitHub API]
+    UI["Next.js Frontend"] --> API["Spring Boot Backend"]
+    API --> DB[("Managed PostgreSQL + PGVector")]
+    API --> EMB["Hosted Embedding API"]
+    API --> LLM["Hosted Chat API"]
+    API --> GH["GitHub API"]
 
-A hosted provider such as OpenAI or Gemini can later replace the local embedding/chat models while keeping the core repository → retrieval → RAG architecture intact.
+A hosted provider such as OpenAI or Gemini can remove the need to run Ollama on the production server.
 
 Roadmap
 
-Near-Term
+Near Term
 
 Add Repository by URL
 
-Pin indexing to exact commit SHA
+Commit-SHA-pinned indexing
 
-Commit-addressed archive fetching
+Safe source archive ingestion
 
-Archive safety validation
+Better line-level citations
 
-Better line-preserving citations
+Repository overview
 
-Repository overview / project map
-
-Better retrieval for architecture-level questions
+Improve architecture-level retrieval
 
 Hosted AI provider option
 
@@ -602,85 +654,49 @@ Dependency graph
 
 Architecture visualization
 
-PR explanation
+Pull-request explanation
 
 Change-impact analysis
 
 Team workspaces
 
-Shared repository knowledge
-
 Use Cases
 
 CodeSense can help with:
 
-onboarding into an unfamiliar codebase,
+onboarding into unfamiliar codebases,
 
 understanding project architecture,
 
-locating implementation logic,
+tracing authentication and data flow,
 
-tracing authentication or data flow,
+locating feature implementations,
 
 exploring open-source repositories,
 
 studying real-world projects,
 
-technical project review,
+technical codebase review,
 
 repository-specific Q&A,
 
-maintenance of long-lived applications.
-
-Design Principles
-
-Ground answers in actual repository context.
-
-Retrieve relevant code instead of sending the full repository.
-
-Keep repository boundaries strict.
-
-Keep secrets on the backend.
-
-Treat repository content as untrusted data.
-
-Prefer a reliable MVP over unnecessary complexity.
-
-Reuse working indexing and RAG infrastructure.
-
-Keep AI providers replaceable.
-
-Limitations
-
-The project is under active development.
-
-Current limitations may include:
-
-smaller local models can be weaker on complex architecture questions,
-
-large repositories take longer to index,
-
-RAG quality depends on chunking and retrieval quality,
-
-local inference can be slow on machines without suitable hardware,
-
-deployment of local models requires more infrastructure than hosted APIs.
+maintaining long-lived software.
 
 License
 
-This project is source-available for evaluation and portfolio review, not open source.
+CodeSense is source-available for evaluation and portfolio review, not open source.
 
-See LICENSE for the complete terms.
+See LICENSE.md for complete terms.
 
-In summary, unauthorized copying of substantial project code, redistribution, commercial use, resale, public derivative works, or reuse of substantial implementation in a competing/similar product is not permitted without prior written permission.
+Unauthorized copying of substantial project code, redistribution, commercial use, resale, or reuse of substantial implementation in a competing or substantially similar product is not permitted without prior written permission.
 
-Third-party dependencies remain subject to their own licenses.
+Third-party dependencies remain governed by their own licenses.
 
 Disclaimer
 
-CodeSense is an independently developed software project under active development.
+CodeSense is under active development.
 
-AI-generated explanations may be incomplete or inaccurate and should not replace direct source-code review for security-critical or production-critical decisions.
+AI-generated explanations may be incomplete or inaccurate. Security-critical or production-critical decisions should always be verified directly against the source code.
 
 <p align="center">
   <strong>CodeSense</strong><br/>
