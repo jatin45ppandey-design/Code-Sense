@@ -1,0 +1,13 @@
+# Local secrets and machine-specific configuration
+.env
+.env.*
+!.env.example
+
+# JavaScript build output and dependencies
+**/node_modules/
+**/.next/
+
+# Java build output and IDE metadata
+**/target/
+**/.idea/
+**/.vscode/
