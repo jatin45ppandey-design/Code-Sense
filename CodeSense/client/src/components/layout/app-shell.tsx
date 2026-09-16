@@ -59,7 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const initials = (user?.displayName || user?.githubUsername || "CS").slice(0, 2).toUpperCase();
 
   return (
-    <SidebarProvider>
+    <SidebarProvider className="h-svh overflow-hidden">
       <Sidebar variant="inset" collapsible="icon">
         <SidebarHeader className="pt-3 pb-2"><Brand className="w-full" /></SidebarHeader>
         <SidebarContent>
@@ -92,15 +92,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
-      <SidebarInset className="min-w-0 overflow-hidden">
+      <SidebarInset className="h-svh min-w-0 overflow-hidden">
         <header className="sticky top-0 z-30 flex h-13 shrink-0 items-center gap-2 border-b border-border/75 bg-background/82 px-4 backdrop-blur-md">
           <SidebarTrigger className="-ml-1" />
-          <Brand className="md:hidden" />
+          <Brand compact className="md:hidden" />
           <Separator orientation="vertical" className="mx-1 hidden h-4 md:block" />
           <div className="min-w-0 flex-1 text-sm font-medium text-foreground max-md:hidden">{routeTitle(pathname)}</div>
           <div className="flex items-center gap-1"><ThemeToggle /><Button variant="ghost" size="sm" className="hidden text-destructive hover:text-destructive md:inline-flex" onClick={() => logout.mutate()} disabled={logout.isPending}><LogOut /> {logout.isPending ? "Signing out..." : "Sign out"}</Button></div>
         </header>
-        <div className="workspace-surface flex min-h-0 flex-1 flex-col">{children}</div>
+        <div className="workspace-surface flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

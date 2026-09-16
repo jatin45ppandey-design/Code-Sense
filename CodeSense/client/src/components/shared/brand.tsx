@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export function CodeSenseMark({ className }: { className?: string }) {
-  return <svg viewBox="0 0 80 80" className={cn("shrink-0 text-white drop-shadow-[0_5px_12px_rgba(19,133,255,0.18)]", className)} aria-hidden="true"><defs><linearGradient id="codesense-ring" x1="16" y1="13" x2="62" y2="68" gradientUnits="userSpaceOnUse"><stop stopColor="#3DB7FF" /><stop offset="1" stopColor="#137BFF" /></linearGradient></defs><path d="M58 10a34 34 0 1 0 0 60L53 59a22 22 0 1 1 0-38Z" fill="url(#codesense-ring)" /><path d="m43 22-14 15 11 11m-3-16 14 15-12 12" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="5" /></svg>;
+  return <svg viewBox="0 0 80 80" className={cn("shrink-0 text-primary-foreground drop-shadow-[0_5px_12px_rgba(19,133,255,0.18)]", className)} aria-hidden="true"><defs><linearGradient id="codesense-ring" x1="16" y1="13" x2="62" y2="68" gradientUnits="userSpaceOnUse"><stop stopColor="#3DB7FF" /><stop offset="1" stopColor="#137BFF" /></linearGradient></defs><path d="M58 10a34 34 0 1 0 0 60L53 59a22 22 0 1 1 0-38Z" fill="url(#codesense-ring)" /><path d="m43 22-14 15 11 11m-3-16 14 15-12 12" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="5" /></svg>;
 }
 
 export function Brand({ compact = false, className, landing = false }: { compact?: boolean; className?: string; landing?: boolean }) {

@@ -45,7 +45,7 @@ export function ChatView({ repositoryId }: { repositoryId: string }) {
     });
   }, [create, ready, sessions.data, sessions.isSuccess]);
 
-  if (repository.isLoading) return <div className="flex min-h-[calc(100svh-4.25rem)] flex-col p-5"><Skeleton className="h-12 rounded-lg" /><Skeleton className="mt-3 flex-1 rounded-xl" /></div>;
+  if (repository.isLoading) return <div className="flex h-full min-h-0 flex-1 flex-col p-5"><Skeleton className="h-12 rounded-lg" /><Skeleton className="mt-3 flex-1 rounded-xl" /></div>;
   if (repository.isError || !repository.data) return <div className="p-6"><ErrorState message={repository.error?.message} retry={() => repository.refetch()} /></div>;
 
   const repo = repository.data;
@@ -55,7 +55,7 @@ export function ChatView({ repositoryId }: { repositoryId: string }) {
   const errorMessage = status.data?.errorMessage ?? repo.errorMessage;
 
   return (
-    <div className="flex min-h-[calc(100svh-4.25rem)] flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex min-h-14 shrink-0 items-center gap-3 border-b px-4">
         <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link href={`/repositories/${repo.id}`} />} aria-label="Back to repository"><ArrowLeft /></Button>
         {ready && <Button variant="ghost" size="icon-sm" className="lg:hidden" onClick={() => setMobileSessionsOpen(true)} aria-label="Open recent questions"><PanelLeft /></Button>}
@@ -70,7 +70,7 @@ export function ChatView({ repositoryId }: { repositoryId: string }) {
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           <SessionList repositoryId={repo.id} selectedId={activeId} onSelect={selectSession} />
           <Sheet open={mobileSessionsOpen} onOpenChange={setMobileSessionsOpen}><SheetContent side="left" className="flex w-[min(22rem,90vw)] flex-col p-0 lg:hidden"><SheetHeader className="border-b px-4 py-4 text-left"><SheetTitle>Recent questions</SheetTitle></SheetHeader><SessionList repositoryId={repo.id} selectedId={activeId} drawer onSelect={(sessionId) => { selectSession(sessionId); setMobileSessionsOpen(false); }} /></SheetContent></Sheet>
-          <section className="flex min-h-[65svh] min-w-0 flex-1 flex-col lg:min-h-0">
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <ChatMessages repository={repo} messages={messages.data ?? []} streamText={hasActiveStream ? stream.streamText : ""} assistantMessage={hasActiveStream ? stream.assistantMessage : null} loading={messages.isLoading || (!activeId && create.isPending)} waitingForFirstToken={hasActiveStream && stream.waitingForFirstToken} loadingStage={stream.loadingStage} isStreaming={hasActiveStream && stream.isStreaming} isComplete={hasActiveStream && stream.isComplete} streamError={hasActiveStream && stream.isError ? stream.error : null} onStarterPrompt={stream.send} starterDisabled={!activeId || (hasActiveStream && stream.streaming)} />
             <ChatComposer disabled={!activeId} streaming={hasActiveStream && stream.streaming} error={(hasActiveStream ? stream.error : null) || messages.error?.message || sessions.error?.message || create.error?.message} onSend={stream.send} onStop={stream.stop} />
           </section>
