@@ -83,9 +83,11 @@ public class IndexingService {
         Repository repo = repositoryRepository.findByIdAndUserId(repoId, userId)
                 .orElseThrow(() -> new NotFoundException("Repository not found"));
         String token = userService.decryptaccessToken(userService.reqById(userId));
+        String commitSha = gitHubApiClient.getCommitSha(
+                token, repo.getOwner(), repo.getName(), repo.getDefaultBranch());
 
         Map<String, Object> tree = gitHubApiClient.getRepoTree(
-                token, repo.getOwner(), repo.getName(), repo.getDefaultBranch());
+                token, repo.getOwner(), repo.getName(), commitSha);
         List<String> filePaths = listIndexableFiles(tree);
         if (filePaths.isEmpty()) {
             throw new BadReqException("Repository contains no supported source files");
@@ -98,7 +100,7 @@ public class IndexingService {
         for (String path : filePaths) {
             try {
                 String content = gitHubApiClient.getFileContent(
-                        token, repo.getOwner(), repo.getName(), path);
+                        token, repo.getOwner(), repo.getName(), path, commitSha);
                 documents.addAll(codeChunker.chunkFile(
                         repoId.toString(),
                         repo.getOwner(),
@@ -140,7 +142,7 @@ public class IndexingService {
             throw exception;
         }
 
-        markReady(repoId, userId, filePaths.size(), processed, documents.size(), repo.getFullName());
+        markReady(repoId, userId, filePaths.size(), processed, documents.size(), repo.getFullName(), commitSha);
     }
 
     @SuppressWarnings("unchecked")
@@ -214,13 +216,15 @@ public class IndexingService {
             int totalFiles,
             int processedFiles,
             int totalChunks,
-            String fullName) {
+            String fullName,
+            String commitSha) {
         repositoryRepository.findByIdAndUserId(repoId, userId).ifPresent(repo -> {
             repo.setIndexStatus(IndexStatus.READY);
             repo.setFilesTotal(totalFiles);
             repo.setFilesProcessed(processedFiles);
             repo.setChunkCount(totalChunks);
             repo.setIndexedAt(Instant.now());
+            repo.setIndexedCommitSha(commitSha);
             repo.setErrorMessage(null);
             repositoryRepository.save(repo);
         });

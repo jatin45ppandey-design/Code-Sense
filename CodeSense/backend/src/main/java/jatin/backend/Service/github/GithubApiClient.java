@@ -30,7 +30,7 @@ public class GithubApiClient {
 
     private final RestClient.Builder restClientBuilder;
 
-     public List<Map<String, Object>> listUserRepos(String accessToken) {
+    public List<Map<String, Object>> listUserRepos(String accessToken) {
         List<Map<String, Object>> all = new ArrayList<>();
         int page = 1;
         while (page <= 10) {
@@ -58,6 +58,30 @@ public class GithubApiClient {
         return all;
     }
 
+    /** Reads canonical repository metadata using the current user's GitHub token. */
+    public Map<String, Object> getRepository(String accessToken, String owner, String repo) {
+        return execute(() -> client(accessToken)
+                .get()
+                .uri("/repos/{owner}/{repo}", owner, repo)
+                .retrieve()
+                .body(MAP), "Repository not found or you do not have access");
+    }
+
+    /** Resolves a mutable branch name to an immutable commit for one indexing run. */
+    public String getCommitSha(String accessToken, String owner, String repo, String ref) {
+        Map<String, Object> body = execute(() -> client(accessToken)
+                .get()
+                .uri("/repos/{owner}/{repo}/commits/{ref}", owner, repo, ref)
+                .retrieve()
+                .body(MAP));
+        Object sha = body == null ? null : body.get("sha");
+        if (sha == null || String.valueOf(sha).isBlank()) {
+            throw new ExternalServiceException(HttpStatus.BAD_GATEWAY,
+                    "GitHub returned an invalid commit reference", new IllegalStateException("Missing commit SHA"));
+        }
+        return String.valueOf(sha);
+    }
+
       public Map<String, Object> getRepoTree(String accessToken, String owner, String repo, String branch) {
         return execute(() -> client(accessToken)
                 .get()
@@ -66,10 +90,13 @@ public class GithubApiClient {
                 .body(MAP));
     }
 
-       public String getFileContent(String accessToken, String owner, String repo, String path) {
+       public String getFileContent(String accessToken, String owner, String repo, String path, String ref) {
         Map<String, Object> body = execute(() -> client(accessToken)
                 .get()
-                .uri("/repos/{owner}/{repo}/contents/{path}", owner, repo, path)
+                .uri(uriBuilder -> uriBuilder
+                        .path("/repos/{owner}/{repo}/contents/{path}")
+                        .queryParam("ref", ref)
+                        .build(owner, repo, path))
                 .retrieve()
                 .body(MAP));
         if (body == null) {
@@ -103,6 +130,10 @@ public class GithubApiClient {
     }
 
     private static <T> T execute(Supplier<T> request) {
+        return execute(request, "GitHub repository or branch was not found");
+    }
+
+    private static <T> T execute(Supplier<T> request, String notFoundMessage) {
         try {
             return request.get();
         } catch (RestClientResponseException exception) {
@@ -112,12 +143,16 @@ public class GithubApiClient {
                         "GitHub authorization expired; sign in again", exception);
             }
             if (status == 403) {
+                if (exception.getResponseHeaders() != null
+                        && "0".equals(exception.getResponseHeaders().getFirst("X-RateLimit-Remaining"))) {
+                    throw providerError(HttpStatus.TOO_MANY_REQUESTS,
+                            "GitHub API rate limit exceeded", exception);
+                }
                 throw providerError(HttpStatus.FORBIDDEN,
-                        "GitHub access was denied or its rate limit was exceeded", exception);
+                        "GitHub access was denied", exception);
             }
             if (status == 404) {
-                throw providerError(HttpStatus.NOT_FOUND,
-                        "GitHub repository or branch was not found", exception);
+                throw providerError(HttpStatus.NOT_FOUND, notFoundMessage, exception);
             }
             if (status == 409) {
                 throw providerError(HttpStatus.CONFLICT,

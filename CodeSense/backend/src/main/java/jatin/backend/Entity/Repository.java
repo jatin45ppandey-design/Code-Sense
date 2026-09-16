@@ -69,6 +69,9 @@ public class Repository {
     @Column(name = "indexed_at")
     private Instant indexedAt;
 
+    @Column(name = "indexed_commit_sha", length = 64)
+    private String indexedCommitSha;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

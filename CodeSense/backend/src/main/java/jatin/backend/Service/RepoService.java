@@ -17,6 +17,7 @@ import jatin.backend.Exceptions.BadReqException;
 import jatin.backend.Exceptions.NotFoundException;
 import jatin.backend.Repo.RepositoryRepo;
 import jatin.backend.Service.github.GithubApiClient;
+import jatin.backend.Service.github.GitHubRepositoryUrlParser;
 import lombok.RequiredArgsConstructor;
 
 /** Synchronizes a user's GitHub repositories and exposes persisted repository data. */
@@ -27,6 +28,7 @@ public class RepoService {
     private final RepositoryRepo repositoryRepo;
     private final UserService userService;
     private final GithubApiClient githubApiClient;
+    private final GitHubRepositoryUrlParser repositoryUrlParser;
 
     /** Fetches the latest GitHub repositories, upserts them, and returns the stored list. */
     public List<RepositoryResponse> syncAndListRepos(UUID userId) {
@@ -36,39 +38,21 @@ public class RepoService {
         List<Repository> repositories = new ArrayList<>(remoteRepositories.size());
 
         for (Map<String, Object> remote : remoteRepositories) {
-            long githubRepoId = requiredLong(remote.get("id"), "GitHub repository id is missing or invalid");
-            Repository repository = repositoryRepo.findByUserIdAndGithubRepoId(userId, githubRepoId)
-                    .orElseGet(Repository::new);
-
-            String name = requiredText(remote.get("name"), "GitHub repository name is missing");
-            String owner = extractOwner(remote.get("owner"));
-            String fullName = optionalText(remote.get("full_name"), owner + "/" + name);
-
-            if (owner.isBlank() && fullName.contains("/")) {
-                owner = fullName.substring(0, fullName.indexOf('/'));
-            }
-            if (owner.isBlank()) {
-                throw new BadReqException("GitHub repository owner is missing");
-            }
-
-            repository.setUserId(userId);
-            repository.setGithubRepoId(githubRepoId);
-            repository.setOwner(owner);
-            repository.setName(name);
-            repository.setFullName(fullName);
-            repository.setPrivate(Boolean.TRUE.equals(remote.get("private")));
-            repository.setDefaultBranch(optionalText(remote.get("default_branch"), "main"));
-            repository.setLanguage(nullableText(remote.get("language")));
-            repository.setHtmlUrl(nullableText(remote.get("html_url")));
-            repository.setDescription(nullableText(remote.get("description")));
-            repository.setUpdatedAt(Instant.now());
-            repositories.add(repository);
+            repositories.add(applyGithubMetadata(userId, remote));
         }
 
-        return repositoryRepo.saveAll(repositories).stream()
-                .sorted((left, right) -> left.getFullName().compareToIgnoreCase(right.getFullName()))
-                .map(this::toResponse)
-                .toList();
+        repositoryRepo.saveAll(repositories);
+        return listStored(userId);
+    }
+
+    /** Imports only repositories that GitHub authorizes for the current OAuth token. */
+    @Transactional
+    public RepositoryResponse importFromUrl(UUID userId, String url) {
+        GitHubRepositoryUrlParser.RepositoryAddress address = repositoryUrlParser.parse(url);
+        User user = userService.reqById(userId);
+        Map<String, Object> remote = githubApiClient.getRepository(
+                userService.decryptaccessToken(user), address.owner(), address.repository());
+        return toResponse(repositoryRepo.save(applyGithubMetadata(userId, remote)));
     }
 
     @Transactional(readOnly = true)
@@ -111,10 +95,38 @@ public class RepoService {
                 repository.getDescription(),
                 repository.getIndexStatus(),
                 repository.getIndexedAt(),
+                repository.getIndexedCommitSha(),
                 repository.getChunkCount(),
                 repository.getFilesTotal(),
                 repository.getFilesProcessed(),
                 repository.getErrorMessage());
+    }
+
+    private Repository applyGithubMetadata(UUID userId, Map<String, Object> remote) {
+        long githubRepoId = requiredLong(remote.get("id"), "GitHub repository id is missing or invalid");
+        Repository repository = repositoryRepo.findByUserIdAndGithubRepoId(userId, githubRepoId)
+                .orElseGet(Repository::new);
+        String name = requiredText(remote.get("name"), "GitHub repository name is missing");
+        String owner = extractOwner(remote.get("owner"));
+        String fullName = optionalText(remote.get("full_name"), owner + "/" + name);
+        if (owner.isBlank() && fullName.contains("/")) {
+            owner = fullName.substring(0, fullName.indexOf('/'));
+        }
+        if (owner.isBlank()) {
+            throw new BadReqException("GitHub repository owner is missing");
+        }
+        repository.setUserId(userId);
+        repository.setGithubRepoId(githubRepoId);
+        repository.setOwner(owner);
+        repository.setName(name);
+        repository.setFullName(fullName);
+        repository.setPrivate(Boolean.TRUE.equals(remote.get("private")));
+        repository.setDefaultBranch(optionalText(remote.get("default_branch"), "main"));
+        repository.setLanguage(nullableText(remote.get("language")));
+        repository.setHtmlUrl(nullableText(remote.get("html_url")));
+        repository.setDescription(nullableText(remote.get("description")));
+        repository.setUpdatedAt(Instant.now());
+        return repository;
     }
 
     private static String extractOwner(Object value) {

@@ -123,6 +123,12 @@ export const api = {
       `/api/repos/${id}`
     ),
 
+  importRepository: (url: string) =>
+    apiFetch<RepositoryResponse>("/api/repos/import", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
+
   startIndexing: (id: string) =>
     apiFetch<RepositoryResponse>(
       `/api/repos/${id}/index`,

@@ -49,6 +49,30 @@ export function useStartIndexing() {
   });
 }
 
+export function useImportRepository() {
+  const queryClient = useQueryClient();
+  const upsertRepository = (repository: RepositoryResponse) => {
+    queryClient.setQueryData(queryKeys.repository(repository.id), repository);
+    queryClient.setQueryData<RepositoryResponse[]>(queryKeys.repositories, (current = []) => {
+      const index = current.findIndex((item) => item.id === repository.id);
+      if (index === -1) return [...current, repository].sort((a, b) => a.fullName.localeCompare(b.fullName));
+      return current.map((item) => item.id === repository.id ? repository : item);
+    });
+  };
+  return useMutation({
+    mutationFn: async (url: string) => {
+      const repository = await api.importRepository(url);
+      upsertRepository(repository);
+      if (repository.indexStatus === "READY" || repository.indexStatus === "INDEXING") return repository;
+      return api.startIndexing(repository.id);
+    },
+    onSuccess: (repository) => {
+      upsertRepository(repository);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.indexStatus(repository.id) });
+    },
+  });
+}
+
 export function repositoryProgress(repository: Pick<RepositoryResponse, "filesProcessed" | "filesTotal">) {
   if (!repository.filesTotal) return 0;
   return Math.min(100, Math.round((repository.filesProcessed / repository.filesTotal) * 100));

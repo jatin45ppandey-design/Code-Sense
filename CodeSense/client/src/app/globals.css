@@ -117,6 +117,136 @@ body {
   mask-image: linear-gradient(to bottom, black, transparent 86%);
 }
 
+.codesense-landing { isolation: isolate; background: oklch(0.972 0.006 250); }
+.dark .codesense-landing { background: oklch(0.13 0.014 258); }
+.codesense-landing::before { position: absolute; z-index: 0; inset: 0; content: ""; pointer-events: none; background: radial-gradient(30rem circle at var(--landing-light-x, 69%) var(--landing-light-y, 40%), color-mix(in oklab, var(--primary) 14%, transparent), transparent 68%); transition: background-position 160ms ease-out; }
+.codesense-custom-cursor { display: none; }
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .codesense-custom-cursor-active .codesense-landing, .codesense-custom-cursor-active .codesense-landing * { cursor: none !important; }
+  .codesense-custom-cursor-active .codesense-landing input, .codesense-custom-cursor-active .codesense-landing textarea, .codesense-custom-cursor-active .codesense-landing [contenteditable="true"] { cursor: text !important; }
+  .codesense-custom-cursor { position: fixed; z-index: 100; top: 0; left: 0; display: block; width: 0; height: 0; pointer-events: none; will-change: transform; transform: translate3d(var(--cursor-x, -100px), var(--cursor-y, -100px), 0); }
+  .codesense-cursor-core, .codesense-cursor-reactor { position: absolute; top: 50%; left: 50%; pointer-events: none; will-change: transform, opacity; opacity: 0; transform: translate(-50%, -50%); }
+  .codesense-cursor-core { width: 5px; height: 5px; border-radius: 999px; background: color-mix(in oklab, white 82%, var(--primary)); box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 36%, transparent), 0 0 9px color-mix(in oklab, var(--primary) 42%, transparent); transition: opacity 120ms ease, transform 140ms ease; }
+  .codesense-cursor-reactor { width: calc(32px + var(--signature-cursor-growth, 0px)); height: calc(32px + var(--signature-cursor-growth, 0px)); transition: width 180ms ease, height 180ms ease, opacity 140ms ease, transform 140ms ease, background-color 180ms ease; }
+  .codesense-cursor-reactor svg { display: block; width: 100%; height: 100%; fill: none; stroke: color-mix(in oklab, var(--primary) 78%, transparent); stroke-linecap: round; stroke-width: 1.5; animation: codesense-reactor-drift var(--signature-orbit-duration, 8s) linear infinite; }
+  .codesense-reactor-ticks { stroke: color-mix(in oklab, var(--foreground) 52%, transparent); stroke-width: 1; opacity: var(--signature-tick-opacity, 0.72); }
+  .codesense-cursor-inner { position: absolute; inset: 8px; border: 1px solid color-mix(in oklab, var(--primary) 48%, transparent); border-radius: 999px; transition: inset 180ms ease, border-color 180ms ease; }
+  .codesense-cursor-inner::after { position: absolute; top: -2px; left: 50%; width: 3px; height: 3px; border: 1px solid color-mix(in oklab, var(--primary) 72%, transparent); border-radius: 999px; content: ""; transform: translateX(-50%); }
+  .codesense-cursor-core.is-visible, .codesense-cursor-reactor.is-visible { opacity: 1; }
+  .codesense-cursor-core[data-state="text"], .codesense-cursor-reactor[data-state="text"] { opacity: 0; }
+  .codesense-cursor-reactor[data-state="interactive"] { width: 44px; height: 44px; background: color-mix(in oklab, var(--primary) 5%, transparent); }
+  .codesense-cursor-reactor[data-state="interactive"] .codesense-cursor-inner { inset: 12px; border-color: color-mix(in oklab, var(--primary) 72%, transparent); }
+  .codesense-cursor-reactor[data-state="cta"] { width: 46px; height: 46px; background: color-mix(in oklab, var(--primary) 11%, transparent); }
+  .codesense-cursor-reactor[data-state="preview"] { width: 48px; height: 48px; background: radial-gradient(circle, color-mix(in oklab, var(--primary) 10%, transparent), transparent 68%); }
+  .codesense-cursor-reactor[data-state="preview"] .codesense-cursor-inner { inset: 13px; border-color: color-mix(in oklab, var(--primary) 76%, transparent); }
+  .codesense-cursor-reactor[data-state="signature"] { background: radial-gradient(circle, color-mix(in oklab, var(--primary) 8%, transparent), transparent 69%); }
+  .codesense-cursor-reactor[data-state="signature"] .codesense-cursor-inner { border-color: color-mix(in oklab, var(--primary) 72%, transparent); }
+  html[data-signature-full] .codesense-cursor-core { animation: codesense-signature-pulse 260ms ease-out 1; }
+  .codesense-cursor-core.is-pressed { transform: translate(-50%, -50%) scale(1.35); }
+  .codesense-cursor-reactor.is-pressed { transform: translate(-50%, -50%) scale(0.78); }
+  @keyframes codesense-reactor-drift { to { transform: rotate(360deg); } }
+  @keyframes codesense-signature-pulse { 0% { transform: translate(-50%, -50%) scale(1); } 55% { transform: translate(-50%, -50%) scale(1.42); } 100% { transform: translate(-50%, -50%) scale(1); } }
+}
+.codesense-auth-transition { background: color-mix(in oklab, oklch(0.13 0.014 258) 91%, transparent); backdrop-filter: blur(7px); }
+.codesense-auth-transition-panel { width: min(100%, 24rem); border: 1px solid color-mix(in oklab, var(--border) 86%, transparent); border-radius: 1rem; background: color-mix(in oklab, var(--card) 94%, transparent); padding: 2rem 1.5rem; box-shadow: 0 20px 50px color-mix(in oklab, var(--foreground) 15%, transparent); }
+.codesense-auth-reactor { position: relative; display: grid; width: 5.5rem; height: 5.5rem; place-items: center; border: 1px solid color-mix(in oklab, var(--primary) 48%, transparent); border-radius: 999px; background: radial-gradient(circle, color-mix(in oklab, var(--primary) 12%, transparent), transparent 67%); }
+.codesense-auth-reactor::before { position: absolute; width: 6.5rem; height: 6.5rem; border: 1px dashed color-mix(in oklab, var(--primary) 35%, transparent); border-radius: 999px; content: ""; }
+.codesense-developer-signature { position: relative; z-index: 20; display: grid; width: 4rem; height: 2.5rem; margin: 0.875rem auto 0; place-items: center; }
+.codesense-developer-signature-zone { display: grid; width: 4rem; height: 2.5rem; place-items: center; border: 0; background: transparent; padding: 0; color: var(--foreground); }
+.codesense-developer-signature-copy { position: relative; display: flex; align-items: baseline; justify-content: center; gap: 0.28rem; white-space: nowrap; opacity: var(--signature-reveal, 0); filter: blur(var(--signature-blur, 8px)); letter-spacing: var(--signature-tracking, 0.1em); pointer-events: none; transform: translate3d(var(--signature-slice-offset, 0px), var(--signature-offset, 4px), 0); will-change: opacity, filter, letter-spacing, transform; }
+.codesense-developer-signature-copy span { color: var(--muted-foreground); font-size: 0.7rem; }
+.codesense-developer-signature-copy strong { color: color-mix(in oklab, var(--foreground) 88%, var(--primary)); font-size: 0.72rem; font-weight: 600; }
+.codesense-developer-signature-copy::before, .codesense-developer-signature-copy::after { position: absolute; inset: 0; content: attr(data-credit); font-size: 0.72rem; font-weight: 600; opacity: var(--signature-glitch-opacity, 0); pointer-events: none; }
+.codesense-developer-signature-copy::before { color: color-mix(in oklab, var(--primary) 88%, white); clip-path: inset(18% 0 54% 0); transform: translateX(var(--signature-channel-offset, 0px)); }
+.codesense-developer-signature-copy::after { color: color-mix(in oklab, white 86%, var(--primary)); clip-path: inset(58% 0 18% 0); transform: translateX(var(--signature-channel-offset-inverse, 0px)); }
+.codesense-developer-signature[data-signature-decoding] .codesense-developer-signature-copy::before { animation: codesense-signature-slice 160ms steps(2, end) 2; }
+.codesense-developer-signature[data-signature-decoding] .codesense-developer-signature-copy::after { animation: codesense-signature-slice 190ms steps(2, end) 2 reverse; }
+html[data-signature-full] .codesense-developer-signature-copy { animation: codesense-signature-lock 90ms ease-out 1; }
+@keyframes codesense-signature-slice { 50% { transform: translateX(var(--signature-channel-offset-inverse, 0px)); } }
+@keyframes codesense-signature-lock { 0% { transform: translate3d(2px, 0, 0); filter: brightness(1.14); } 58% { transform: translate3d(-1px, 0, 0); filter: brightness(1.32); } 100% { transform: translate3d(0, 0, 0); filter: none; } }
+@media (hover: none), (pointer: coarse) { .codesense-developer-signature-copy { opacity: 0; filter: none; letter-spacing: 0.02em; transform: none; } .codesense-developer-signature-copy::before, .codesense-developer-signature-copy::after { display: none; } .codesense-developer-signature.is-touch-revealed .codesense-developer-signature-copy { opacity: 1; } }
+.codesense-landing-grid { opacity: 0.38; mask-image: linear-gradient(to bottom, black, black 62%, transparent 94%); }
+.codesense-background-lines { color: color-mix(in oklab, var(--muted-foreground) 30%, transparent); opacity: 0.46; }
+.codesense-node { position: absolute; width: 5px; height: 5px; border: 1px solid currentColor; background: var(--background); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 5%, transparent); }
+.codesense-architecture-line { position: absolute; height: 1px; background: linear-gradient(90deg, currentColor, transparent); transform: rotate(-17deg); transform-origin: left; }
+.codesense-ambient-code { position: absolute; font-family: var(--font-geist-mono); font-size: 10px; line-height: 1.9; letter-spacing: 0.08em; text-transform: uppercase; }
+.codesense-scene { isolation: isolate; perspective: 1400px; transform-style: preserve-3d; }
+.codesense-scene-aura { background: radial-gradient(circle, color-mix(in oklab, var(--primary) 17%, transparent), transparent 68%); filter: blur(12px); transform: translate3d(var(--scene-shift-x-inverse, 0px), var(--scene-shift-y-inverse, 0px), -70px); transition: transform 180ms ease-out; }
+.codesense-main-preview { position: relative; z-index: 10; transform: translate3d(0, var(--preview-focus-y, 0px), var(--preview-focus-z, 0px)) rotateX(var(--scene-rotate-x, 0deg)) rotateY(var(--scene-rotate-y, 0deg)); transform-style: preserve-3d; transition: transform 220ms ease-out, box-shadow 220ms ease, filter 220ms ease; }
+.codesense-main-preview:hover { box-shadow: 0 28px 56px color-mix(in oklab, var(--foreground) 18%, transparent); }
+.codesense-file-context { z-index: 1; transform: translate3d(calc(-28px + var(--scene-shift-x, 0px)), calc(24px + var(--scene-shift-y, 0px)), calc(-55px + var(--context-focus-z, 0px))) rotateY(5deg); transform-style: flat; transition: transform 240ms ease-out, filter 220ms ease, opacity 220ms ease; }
+.codesense-file-context-surface { min-width: 0; max-width: 100%; overflow: hidden; isolation: isolate; contain: paint; transition: border-color 220ms ease; }
+.codesense-context-ready { z-index: 20; transform: translate3d(calc(10px + var(--scene-shift-x-soft, 0px)), var(--scene-shift-y-inverse, 0px), calc(30px + var(--status-focus-z, 0px))); transition: transform 220ms ease-out, border-color 220ms ease, filter 220ms ease, opacity 220ms ease; }
+.codesense-pipeline { z-index: 12; transform: translate3d(var(--scene-shift-x-soft, 0px), var(--scene-shift-y-soft, 0px), calc(-20px + var(--pipeline-focus-z, 0px))); transition: transform 240ms ease-out, border-color 220ms ease, filter 220ms ease, opacity 220ms ease; }
+.codesense-capability { position: relative; overflow: hidden; border: 0; background: transparent; transition: background-color 200ms ease, box-shadow 200ms ease; }
+.codesense-capability::before { position: absolute; top: 0; left: 0; width: 0; height: 1px; content: ""; background: color-mix(in oklab, var(--primary) 78%, transparent); transition: width 200ms ease; }
+.codesense-capability p { transition: color 200ms ease, transform 200ms ease; }
+.codesense-capability:hover, .codesense-capability.is-active, .codesense-capability:focus-visible { background: color-mix(in oklab, var(--primary) 4%, transparent); box-shadow: inset 1px 0 color-mix(in oklab, var(--primary) 45%, transparent); outline: none; }
+.codesense-capability:hover::before, .codesense-capability.is-active::before, .codesense-capability:focus-visible::before { width: 2.25rem; }
+.codesense-capability:hover p:first-child, .codesense-capability.is-active p:first-child, .codesense-capability:focus-visible p:first-child { color: var(--primary); transform: translateY(-1px); }
+.codesense-scene[data-capability] .codesense-main-preview > * { opacity: 0.94; filter: brightness(0.97); transition: opacity 220ms ease, filter 220ms ease; }
+.codesense-scene[data-capability="repositories"] .codesense-main-preview { --preview-focus-z: 8px; --preview-focus-y: -1px; }
+.codesense-scene[data-capability="repositories"] .codesense-preview-repository, .codesense-scene[data-capability="repositories"] .codesense-preview-repository-status { opacity: 1; filter: brightness(1.04); }
+.codesense-scene[data-capability="repositories"] .codesense-preview-repository { box-shadow: inset 2px 0 color-mix(in oklab, var(--primary) 62%, transparent); transform: translate3d(0, -2px, 8px); }
+.codesense-scene[data-capability="repositories"] .codesense-preview-repository-status { border-color: color-mix(in oklab, var(--primary) 45%, var(--border)); }
+.codesense-scene[data-capability="repositories"] { --status-focus-z: 8px; }
+.codesense-scene[data-capability="external"] { --context-focus-z: 12px; --pipeline-focus-z: 12px; --status-focus-z: 6px; }
+.codesense-scene[data-capability="external"] .codesense-preview-context, .codesense-scene[data-capability="external"] .codesense-preview-external, .codesense-scene[data-capability="external"] .codesense-preview-repository-status { filter: brightness(1.05); opacity: 1; }
+.codesense-scene[data-capability="external"] .codesense-file-context-surface, .codesense-scene[data-capability="external"] .codesense-preview-external, .codesense-scene[data-capability="external"] .codesense-preview-repository-status { border-color: color-mix(in oklab, var(--primary) 54%, var(--border)); }
+.codesense-scene[data-capability="ask"] .codesense-main-preview { --preview-focus-z: 7px; --preview-focus-y: -1px; }
+.codesense-preview-repository, .codesense-preview-ask, .codesense-preview-answer, .codesense-preview-sources, .codesense-preview-source-row { transition: transform 240ms ease, box-shadow 220ms ease, border-color 220ms ease, background-color 220ms ease, filter 220ms ease, opacity 220ms ease; }
+.codesense-scene[data-capability="ask"] .codesense-preview-ask, .codesense-scene[data-capability="ask"] .codesense-preview-answer { opacity: 1; filter: brightness(1.05); transform: translate3d(0, -2px, 9px); }
+.codesense-scene[data-capability="ask"] .codesense-preview-ask { border-color: color-mix(in oklab, var(--primary) 62%, var(--border)); box-shadow: 0 10px 24px color-mix(in oklab, var(--primary) 10%, transparent); }
+.codesense-scene[data-capability="sources"] { --context-focus-z: 8px; --pipeline-focus-z: 6px; }
+.codesense-scene[data-capability="sources"] .codesense-preview-sources, .codesense-scene[data-capability="sources"] .codesense-preview-source-row, .codesense-scene[data-capability="sources"] .codesense-preview-context { opacity: 1; filter: brightness(1.06); }
+.codesense-scene[data-capability="sources"] .codesense-preview-sources { transform: translate3d(0, -2px, 10px); }
+.codesense-scene[data-capability="sources"] .codesense-preview-source-row { background: color-mix(in oklab, var(--primary) 9%, var(--muted)); }
+.codesense-scene[data-capability="sources"] .codesense-preview-source-row:nth-child(2) { transition-delay: 35ms; }
+.codesense-scene[data-capability="sources"] .codesense-preview-source-row:nth-child(3) { transition-delay: 70ms; }
+
+@media (max-width: 1023px) {
+  .codesense-main-preview { transform: rotateX(1deg) rotateY(-1.5deg); }
+  .codesense-background-lines { opacity: 0.26; }
+}
+
+.workspace-surface {
+  position: relative;
+  isolation: isolate;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 38% -12%, color-mix(in oklab, var(--primary) 8%, transparent), transparent 34rem),
+    var(--background);
+}
+.workspace-surface::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(to bottom, black, transparent 46rem);
+}
+.dark .workspace-surface { background: radial-gradient(circle at 38% -12%, color-mix(in oklab, var(--primary) 11%, transparent), transparent 36rem), var(--background); }
+.workspace-page { width: 100%; max-width: 93.75rem; margin-right: auto; padding: 1.5rem 1.25rem 2.5rem; }
+.workspace-page--narrow { max-width: 62rem; }
+.workspace-metric-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.workspace-metric { position: relative; overflow: hidden; min-width: 0; border: 1px solid color-mix(in oklab, var(--border) 86%, transparent); border-radius: 0.8rem; background: color-mix(in oklab, var(--card) 94%, transparent); padding: 0.85rem 0.95rem; box-shadow: 0 1px 1px color-mix(in oklab, var(--foreground) 3%, transparent); }
+.workspace-metric::before { position: absolute; inset: 0 auto auto 0; width: 2.5rem; height: 1px; content: ""; background: color-mix(in oklab, var(--primary) 72%, transparent); }
+.repository-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); gap: 1rem; }
+.list-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent); padding-top: 1rem; }
+@media (min-width: 640px) { .workspace-page { padding: 2rem 2rem 3rem; } }
+@media (min-width: 1024px) { .workspace-page { padding: 2.25rem 2.75rem 3.5rem; } .workspace-metric-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .workspace-page { padding-left: 3rem; padding-right: 3rem; } }
+
+@media (max-width: 639px) {
+  .codesense-main-preview { transform: none; }
+  .codesense-background-lines { display: none; }
+}
+
 .markdown-body { color: var(--foreground); line-height: 1.72; }
 .markdown-body > * + * { margin-top: 0.85rem; }
 .markdown-body h1, .markdown-body h2, .markdown-body h3 { font-weight: 650; letter-spacing: -0.02em; line-height: 1.3; }
@@ -128,11 +258,14 @@ body {
 .markdown-body a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
 .markdown-body blockquote { border-left: 2px solid var(--border); padding-left: 1rem; color: var(--muted-foreground); }
 .markdown-body code:not(pre code) { border: 1px solid var(--border); border-radius: 0.35rem; background: var(--muted); padding: 0.1rem 0.35rem; font-family: var(--font-geist-mono); font-size: 0.84em; }
-.markdown-body pre { overflow-x: auto; border: 1px solid var(--border); border-radius: 0.65rem; background: oklch(0.13 0.014 258); padding: 0.9rem 1rem; color: oklch(0.92 0.01 250); }
+.markdown-body pre { max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 0.65rem; background: oklch(0.13 0.014 258); padding: 0.9rem 1rem; color: oklch(0.92 0.01 250); }
 .markdown-body pre code { font-family: var(--font-geist-mono); font-size: 0.82rem; }
 .markdown-body table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .markdown-body th, .markdown-body td { border: 1px solid var(--border); padding: 0.45rem 0.65rem; text-align: left; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .codesense-main-preview, .codesense-file-context, .codesense-context-ready, .codesense-pipeline, .codesense-scene-aura { transform: none !important; }
+  .codesense-developer-signature-copy { filter: none; letter-spacing: 0.02em; transform: none; transition: opacity 0.01ms !important; }
+  .codesense-developer-signature-copy::before, .codesense-developer-signature-copy::after { display: none; }
 }

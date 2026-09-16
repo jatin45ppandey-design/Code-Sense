@@ -74,11 +74,14 @@ class IndexingServiceTest {
     @Test
     void marksRepositoryReadyOnlyAfterVectorsAreWritten() {
         String path = "src/App.java";
+        String commitSha = "abc123";
         Document document = new Document("class App {}", Map.of("repositoryId", repositoryId.toString()));
-        when(githubApiClient.getRepoTree("token", "octocat", "hello-world", "main"))
+        when(githubApiClient.getCommitSha("token", "octocat", "hello-world", "main"))
+                .thenReturn(commitSha);
+        when(githubApiClient.getRepoTree("token", "octocat", "hello-world", commitSha))
                 .thenReturn(tree(path));
         when(fileFilter.isEligible(path, 12L, 102_400L)).thenReturn(true);
-        when(githubApiClient.getFileContent("token", "octocat", "hello-world", path))
+        when(githubApiClient.getFileContent("token", "octocat", "hello-world", path, commitSha))
                 .thenReturn("class App {}");
         when(codeChunker.chunkFile(
                 repositoryId.toString(), "octocat", "hello-world", "main", path, "class App {}"))
@@ -90,11 +93,16 @@ class IndexingServiceTest {
         assertEquals(IndexStatus.READY, repository.getIndexStatus());
         assertEquals(1, repository.getFilesProcessed());
         assertEquals(1, repository.getChunkCount());
+        assertEquals(commitSha, repository.getIndexedCommitSha());
+        verify(githubApiClient).getRepoTree("token", "octocat", "hello-world", commitSha);
+        verify(githubApiClient).getFileContent("token", "octocat", "hello-world", path, commitSha);
     }
 
     @Test
     void preservesExistingVectorsWhenRepositoryHasNoIndexableFiles() {
-        when(githubApiClient.getRepoTree("token", "octocat", "hello-world", "main"))
+        when(githubApiClient.getCommitSha("token", "octocat", "hello-world", "main"))
+                .thenReturn("abc123");
+        when(githubApiClient.getRepoTree("token", "octocat", "hello-world", "abc123"))
                 .thenReturn(Map.of("tree", List.of(), "truncated", false));
 
         indexingService.indexAsync(repositoryId, userId);
@@ -108,11 +116,15 @@ class IndexingServiceTest {
     @Test
     void cleansPartialVectorsAndMarksFailedWhenVectorWriteFails() {
         String path = "src/App.java";
+        String commitSha = "abc123";
         Document document = new Document("class App {}", Map.of("repositoryId", repositoryId.toString()));
-        when(githubApiClient.getRepoTree("token", "octocat", "hello-world", "main"))
+        repository.setIndexedCommitSha("previous-sha");
+        when(githubApiClient.getCommitSha("token", "octocat", "hello-world", "main"))
+                .thenReturn(commitSha);
+        when(githubApiClient.getRepoTree("token", "octocat", "hello-world", commitSha))
                 .thenReturn(tree(path));
         when(fileFilter.isEligible(path, 12L, 102_400L)).thenReturn(true);
-        when(githubApiClient.getFileContent("token", "octocat", "hello-world", path))
+        when(githubApiClient.getFileContent("token", "octocat", "hello-world", path, commitSha))
                 .thenReturn("class App {}");
         when(codeChunker.chunkFile(any(), any(), any(), any(), eq(path), any()))
                 .thenReturn(List.of(document));
@@ -124,6 +136,7 @@ class IndexingServiceTest {
         verify(vectorStore, org.mockito.Mockito.times(2)).delete(any(Filter.Expression.class));
         assertEquals(IndexStatus.FAILED, repository.getIndexStatus());
         assertEquals(0, repository.getChunkCount());
+        assertEquals("previous-sha", repository.getIndexedCommitSha());
         assertEquals("AI or repository provider is unavailable", repository.getErrorMessage());
     }
 

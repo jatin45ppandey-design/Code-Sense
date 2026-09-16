@@ -21,6 +21,7 @@ export interface RepositoryResponse {
   description: string | null;
   indexStatus: IndexStatus;
   indexedAt: string | null;
+  indexedCommitSha: string | null;
   chunkCount: number;
   filesTotal: number;
   filesProcessed: number;

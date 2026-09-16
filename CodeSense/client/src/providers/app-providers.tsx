@@ -1,10 +1,10 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider } from "next-themes";
 import { useState } from "react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { FeedbackToastProvider } from "@/components/shared/feedback-toast";
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -15,10 +15,8 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   }));
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>{children}</TooltipProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider><FeedbackToastProvider>{children}</FeedbackToastProvider></TooltipProvider>
+    </QueryClientProvider>
   );
 }

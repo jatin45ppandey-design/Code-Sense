@@ -5,11 +5,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, resolveApiUrl } from "@/lib/api/client";
 import { queryKeys } from "@/lib/query/keys";
 
-export function useCurrentUser() {
+export function useCurrentUser(enabled = true) {
   return useQuery({
     queryKey: queryKeys.currentUser,
     queryFn: api.me,
     retry: false,
+    enabled,
   });
 }
 

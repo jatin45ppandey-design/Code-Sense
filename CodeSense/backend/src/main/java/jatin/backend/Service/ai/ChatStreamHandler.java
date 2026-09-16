@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -20,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 
 /**
- * Generation step: call OpenAI via Spring AI and stream tokens to the browser over SSE.
+ * Generation step: call Ollama through Spring AI and stream tokens to the browser over SSE.
  */
 @Component
 @RequiredArgsConstructor
@@ -49,6 +50,8 @@ public class ChatStreamHandler {
             Disposable subscription = ChatClient.builder(chatModel)
                     .build()
                     .prompt()
+                    .options(OllamaChatOptions.builder()
+                            .disableThinking())
                     .system(systemPrompt)
                     .user(userPrompt)
                     .stream()
@@ -58,7 +61,7 @@ public class ChatStreamHandler {
                         var safeError = AiProviderErrors.sanitize(err);
                         log.error("Chat stream failed: {} ({})",
                                 safeError.getMessage(), err.getClass().getSimpleName());
-                        emitter.completeWithError(safeError);
+                        failStream(emitter, safeError.getMessage());
                     })
                     .doOnComplete(() -> completeStream(
                             emitter, sessionId, fullReply, citations))
@@ -66,14 +69,19 @@ public class ChatStreamHandler {
 
             emitter.onTimeout(() -> {
                 subscription.dispose();
-                emitter.completeWithError(new IllegalStateException("AI response timed out"));
+                log.warn("Chat stream timed out");
+                failStream(emitter, "AI provider request timed out");
             });
             emitter.onCompletion(subscription::dispose);
             emitter.onError(error -> subscription.dispose());
         } catch (IOException exception) {
-            emitter.completeWithError(new IllegalStateException("Could not start response stream"));
+            log.error("Could not start response stream ({})", exception.getClass().getSimpleName());
+            failStream(emitter, "Could not start response stream");
         } catch (RuntimeException exception) {
-            emitter.completeWithError(AiProviderErrors.sanitize(exception));
+            var safeError = AiProviderErrors.sanitize(exception);
+            log.error("Could not start chat stream: {} ({})",
+                    safeError.getMessage(), exception.getClass().getSimpleName());
+            failStream(emitter, safeError.getMessage());
         }
 
         return emitter;
@@ -97,7 +105,8 @@ public class ChatStreamHandler {
             List<CitationDto> citations) {
         try {
             if (fullReply.isEmpty()) {
-                emitter.completeWithError(new IllegalStateException("AI provider returned an empty response"));
+                log.warn("AI provider completed a chat stream without content");
+                failStream(emitter, "AI provider returned an empty response");
                 return;
             }
             ChatMessage assistant = chatMessageRepository.save(ChatMessage.builder()
@@ -113,11 +122,23 @@ public class ChatStreamHandler {
             emitter.send(SseEmitter.event().name("done").data("[DONE]"));
             emitter.complete();
         } catch (IOException exception) {
-            emitter.completeWithError(new IllegalStateException("Could not complete response stream"));
+            log.error("Could not complete response stream ({})", exception.getClass().getSimpleName());
+            failStream(emitter, "Could not complete response stream");
         } catch (RuntimeException exception) {
             log.error("Could not persist streamed assistant response ({})",
                     exception.getClass().getSimpleName());
-            emitter.completeWithError(new IllegalStateException("Could not persist assistant response"));
+            failStream(emitter, "Could not persist assistant response");
+        }
+    }
+
+    /** Sends failures after the response starts as an SSE event, never as a JSON error body. */
+    private void failStream(SseEmitter emitter, String safeMessage) {
+        try {
+            emitter.send(SseEmitter.event().name("error").data(safeMessage));
+        } catch (IOException exception) {
+            log.debug("Could not send SSE error event ({})", exception.getClass().getSimpleName());
+        } finally {
+            emitter.complete();
         }
     }
 

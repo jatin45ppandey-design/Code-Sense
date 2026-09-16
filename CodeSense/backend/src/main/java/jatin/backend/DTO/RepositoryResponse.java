@@ -18,6 +18,7 @@ public record RepositoryResponse(
         String description,
         IndexStatus indexStatus,
         Instant indexedAt,
+        String indexedCommitSha,
         int chunkCount,
         int filesTotal,
         int filesProcessed,

@@ -192,6 +192,10 @@ export async function streamChatMessage(
         break;
       }
 
+      case "error": {
+        throw new Error(payload || "Message failed");
+      }
+
       default: {
         /*
          * Ignore unknown SSE events safely.

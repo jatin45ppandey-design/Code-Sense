@@ -30,4 +30,19 @@ class GithubApiClientTest {
         assertEquals("GitHub repository is empty", error.getMessage());
         server.verify();
     }
+
+    @Test
+    void hidesRepositoryExistenceWhenDirectImportIsInaccessible() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://api.github.com/repos/octocat/private"))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        ExternalServiceException error = assertThrows(ExternalServiceException.class,
+                () -> new GithubApiClient(builder).getRepository("token", "octocat", "private"));
+
+        assertEquals(HttpStatus.NOT_FOUND, error.getStatus());
+        assertEquals("Repository not found or you do not have access", error.getMessage());
+        server.verify();
+    }
 }
