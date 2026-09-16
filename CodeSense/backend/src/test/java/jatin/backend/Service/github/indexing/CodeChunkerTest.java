@@ -9,12 +9,20 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 
 import jatin.backend.Service.ai.RagSettings;
+import jatin.backend.Service.ai.EmbeddingProvider;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class CodeChunkerTest {
 
     @Test
     void addsRepositoryIdentityToEveryChunk() {
-        CodeChunker chunker = new CodeChunker(800, new CodeFileFilter());
+        EmbeddingProvider embeddingProvider = mock(EmbeddingProvider.class);
+        when(embeddingProvider.name()).thenReturn("ollama");
+        when(embeddingProvider.model()).thenReturn("nomic-embed-text");
+        when(embeddingProvider.dimensions()).thenReturn(768);
+        CodeChunker chunker = new CodeChunker(800, new CodeFileFilter(), embeddingProvider);
 
         List<Document> chunks = chunker.chunkFile(
                 "repository-id", "octocat", "hello-world", "main",
@@ -28,6 +36,9 @@ class CodeChunkerTest {
             assertEquals("main", chunk.getMetadata().get(RagSettings.METADATA_BRANCH));
             assertEquals("src/App.java", chunk.getMetadata().get("filePath"));
             assertEquals("java", chunk.getMetadata().get("language"));
+            assertEquals("ollama", chunk.getMetadata().get("embeddingProvider"));
+            assertEquals("nomic-embed-text", chunk.getMetadata().get("embeddingModel"));
+            assertEquals(768, chunk.getMetadata().get("embeddingDimensions"));
         }
     }
 }

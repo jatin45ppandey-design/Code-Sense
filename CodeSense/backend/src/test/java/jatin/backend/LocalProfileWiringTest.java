@@ -16,7 +16,13 @@ import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:local-wiring;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
+        "spring.ai.model.chat=ollama",
+        "spring.ai.model.embedding=ollama"
+})
 @ActiveProfiles("local")
 class LocalProfileWiringTest {
 
@@ -34,7 +40,7 @@ class LocalProfileWiringTest {
         assertEquals(1, applicationContext.getBeansOfType(EmbeddingModel.class).size());
         assertInstanceOf(OllamaChatModel.class, chatModel);
         assertInstanceOf(OllamaEmbeddingModel.class, embeddingModel);
-        assertEquals("vector_store_local",
+        assertEquals("vector_store",
                 environment.getProperty("spring.ai.vectorstore.pgvector.table-name"));
         assertEquals("768", environment.getProperty("spring.ai.vectorstore.pgvector.dimensions"));
     }

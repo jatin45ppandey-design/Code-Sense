@@ -3,6 +3,7 @@ import type { ChatMessageResponse } from "@/lib/types/api";
 
 interface StreamHandlers {
   signal?: AbortSignal;
+  onOpen?: () => void;
   onUserMessage?: (message: ChatMessageResponse) => void;
   onToken?: (token: string) => void;
   onAssistantMessage?: (message: ChatMessageResponse) => void;
@@ -80,6 +81,8 @@ export async function streamChatMessage(
       "The server returned an empty stream."
     );
   }
+
+  handlers.onOpen?.();
 
   const reader = response.body.getReader();
 

@@ -4,9 +4,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -21,14 +18,14 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 
 /**
- * Generation step: call Ollama through Spring AI and stream tokens to the browser over SSE.
+ * Generation step: stream provider-neutral chat tokens to the browser over SSE.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class ChatStreamHandler {
 
-    private final ChatModel chatModel;
+    private final ChatProvider chatProvider;
     private final ChatMessageRepository chatMessageRepository;
     private final CitationMapper citationMapper;
 
@@ -47,15 +44,7 @@ public class ChatStreamHandler {
                     .name("user_message")
                     .data(savedUserMessage));
 
-            Disposable subscription = ChatClient.builder(chatModel)
-                    .build()
-                    .prompt()
-                    .options(OllamaChatOptions.builder()
-                            .disableThinking())
-                    .system(systemPrompt)
-                    .user(userPrompt)
-                    .stream()
-                    .content()
+            Disposable subscription = chatProvider.stream(systemPrompt, userPrompt)
                     .doOnNext(token -> appendToken(emitter, fullReply, token))
                     .doOnError(err -> {
                         var safeError = AiProviderErrors.sanitize(err);

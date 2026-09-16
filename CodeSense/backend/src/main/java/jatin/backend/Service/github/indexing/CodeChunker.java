@@ -11,17 +11,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import jatin.backend.Service.ai.RagSettings;
+import jatin.backend.Service.ai.EmbeddingProvider;
 
 
 @Component
 public class CodeChunker {
-       private final TokenTextSplitter splitter;
+    private final TokenTextSplitter splitter;
     private final CodeFileFilter fileFilter;
+    private final EmbeddingProvider embeddingProvider;
 
   
     public CodeChunker(
             @Value("${app.indexing.chunk-size:800}") int chunkSize,
-            CodeFileFilter fileFilter) {
+            CodeFileFilter fileFilter,
+            EmbeddingProvider embeddingProvider) {
         // Spring AI splits by tokens; ~4 characters per token is a reasonable default for code.
         int chunkTokens = Math.max(50, chunkSize / 4);
 
@@ -29,6 +32,7 @@ public class CodeChunker {
                 .withChunkSize(chunkTokens)
                 .build();
         this.fileFilter = fileFilter;
+        this.embeddingProvider = embeddingProvider;
     }
 
       public List<Document> chunkFile(
@@ -60,7 +64,7 @@ public class CodeChunker {
                 .toList();
     }
 
-      private static Map<String, Object> baseMetadata(
+      private Map<String, Object> baseMetadata(
               String repositoryId,
               String owner,
               String repository,
@@ -74,10 +78,13 @@ public class CodeChunker {
         metadata.put(RagSettings.METADATA_BRANCH, branch);
         metadata.put("filePath", filePath);
         metadata.put("language", language);
+        metadata.put("embeddingProvider", embeddingProvider.name());
+        metadata.put("embeddingModel", embeddingProvider.model());
+        metadata.put("embeddingDimensions", embeddingProvider.dimensions());
         return metadata;
     }
 
-     private static Document withChunkIndex(
+     private Document withChunkIndex(
             Document chunk,
             String repositoryId,
             String owner,
@@ -94,6 +101,9 @@ public class CodeChunker {
         metadata.put("filePath", filePath);
         metadata.put("language", language);
         metadata.put("chunkIndex", chunkIndex);
+        metadata.put("embeddingProvider", embeddingProvider.name());
+        metadata.put("embeddingModel", embeddingProvider.model());
+        metadata.put("embeddingDimensions", embeddingProvider.dimensions());
          return new Document(chunk.getText(), metadata);
             }
 }
