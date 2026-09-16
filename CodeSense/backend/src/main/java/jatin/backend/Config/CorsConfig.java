@@ -1,5 +1,6 @@
 package jatin.backend.Config;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -21,12 +22,14 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         // Frontend origins allowed to call the Spring backend.
-        config.setAllowedOrigins(
-                List.of(
-                        frontendUrl,
-                        "http://127.0.0.1:3000"
-                )
-        );
+        // Keep both local frontend variants available while allowing exactly
+        // one configured Vercel origin. LinkedHashSet prevents duplicates when
+        // FRONTEND_URL is set to either local value.
+        config.setAllowedOrigins(List.copyOf(new LinkedHashSet<>(List.of(
+                frontendUrl,
+                "http://localhost:3000",
+                "http://127.0.0.1:3000"
+        ))));
 
         config.setAllowedMethods(
                 List.of(
