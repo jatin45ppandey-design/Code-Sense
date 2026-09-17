@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api/client";
 import { streamChatMessage } from "@/lib/api/stream";
+import { classifyChatFailure, type ChatFailure } from "@/lib/chat-failure";
 import { queryKeys } from "@/lib/query/keys";
 import type { ChatMessageResponse } from "@/lib/types/api";
 
@@ -40,6 +41,8 @@ export function useStreamChat(sessionId: string | null) {
   const [streamSessionId, setStreamSessionId] = useState<string | null>(null);
   const [assistantMessage, setAssistantMessage] = useState<ChatMessageResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<ChatFailure | null>(null);
+  const [failedPrompt, setFailedPrompt] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [waitingForFirstToken, setWaitingForFirstToken] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -80,6 +83,8 @@ export function useStreamChat(sessionId: string | null) {
     abortRef.current = controller;
     setStreamSessionId(sessionId);
     setError(null);
+    setFailure(null);
+    setFailedPrompt(null);
     setIsError(false);
     setStreamText("");
     setAssistantMessage(null);
@@ -120,7 +125,9 @@ export function useStreamChat(sessionId: string | null) {
       });
     } catch (caught) {
       if ((caught as Error).name !== "AbortError") {
-        setError(caught instanceof Error ? caught.message : "Message failed");
+        setError("The response was interrupted.");
+        setFailure(classifyChatFailure(caught));
+        setFailedPrompt(content);
         setIsError(true);
       }
       void queryClient.invalidateQueries({ queryKey: queryKeys.messages(sessionId) });
@@ -142,6 +149,8 @@ export function useStreamChat(sessionId: string | null) {
     streamSessionId,
     assistantMessage,
     error,
+    failure,
+    failedPrompt,
     isSubmitting,
     waitingForFirstToken,
     isStreaming,
@@ -150,6 +159,8 @@ export function useStreamChat(sessionId: string | null) {
     loadingStage,
     clearError: () => {
       setError(null);
+      setFailure(null);
+      setFailedPrompt(null);
       setIsError(false);
     },
   };

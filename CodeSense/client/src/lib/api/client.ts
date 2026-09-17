@@ -18,10 +18,15 @@ export class ApiError extends Error {
 }
 
 export function getApiBaseUrl() {
-  return (
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://localhost:8080"
-  ).replace(/\/$/, "");
+  const configuredBase = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+  // An empty base means browser-relative, same-origin API routes. This lets
+  // NEXT_PUBLIC_API_URL=/ produce /api/... rather than //api/....
+  if (configuredBase === "/") {
+    return "";
+  }
+
+  return (configuredBase || "http://localhost:8080").replace(/\/+$/, "");
 }
 
 export function resolveApiUrl(path: string) {
@@ -30,8 +35,8 @@ export function resolveApiUrl(path: string) {
     return path;
   }
 
-  // Otherwise attach backend base URL.
-  return `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${getApiBaseUrl()}${normalizedPath}`;
 }
 
 async function errorMessage(response: Response) {
@@ -55,6 +60,7 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const response = await fetch(resolveApiUrl(path), {
     ...init,
+    cache: "no-store",
 
     // Required so DEVGUIDE_SESSION cookie travels
     // between Next.js frontend and Spring backend.

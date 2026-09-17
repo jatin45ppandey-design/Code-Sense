@@ -153,18 +153,12 @@ body {
 .codesense-auth-reactor::before { position: absolute; width: 6.5rem; height: 6.5rem; border: 1px dashed color-mix(in oklab, var(--primary) 35%, transparent); border-radius: 999px; content: ""; }
 .codesense-developer-signature { position: relative; z-index: 20; display: grid; width: 4rem; height: 2.5rem; margin: 0.875rem auto 0; place-items: center; }
 .codesense-developer-signature-zone { display: grid; width: 4rem; height: 2.5rem; place-items: center; border: 0; background: transparent; padding: 0; color: var(--foreground); }
-.codesense-developer-signature-copy { position: relative; display: flex; align-items: baseline; justify-content: center; gap: 0.28rem; white-space: nowrap; opacity: var(--signature-reveal, 0); filter: blur(var(--signature-blur, 8px)); letter-spacing: var(--signature-tracking, 0.1em); pointer-events: none; transform: translate3d(var(--signature-slice-offset, 0px), var(--signature-offset, 4px), 0); will-change: opacity, filter, letter-spacing, transform; }
-.codesense-developer-signature-copy span { color: var(--muted-foreground); font-size: 0.7rem; }
-.codesense-developer-signature-copy strong { color: color-mix(in oklab, var(--foreground) 88%, var(--primary)); font-size: 0.72rem; font-weight: 600; }
-.codesense-developer-signature-copy::before, .codesense-developer-signature-copy::after { position: absolute; inset: 0; content: attr(data-credit); font-size: 0.72rem; font-weight: 600; opacity: var(--signature-glitch-opacity, 0); pointer-events: none; }
-.codesense-developer-signature-copy::before { color: color-mix(in oklab, var(--primary) 88%, white); clip-path: inset(18% 0 54% 0); transform: translateX(var(--signature-channel-offset, 0px)); }
-.codesense-developer-signature-copy::after { color: color-mix(in oklab, white 86%, var(--primary)); clip-path: inset(58% 0 18% 0); transform: translateX(var(--signature-channel-offset-inverse, 0px)); }
-.codesense-developer-signature[data-signature-decoding] .codesense-developer-signature-copy::before { animation: codesense-signature-slice 160ms steps(2, end) 2; }
-.codesense-developer-signature[data-signature-decoding] .codesense-developer-signature-copy::after { animation: codesense-signature-slice 190ms steps(2, end) 2 reverse; }
-html[data-signature-full] .codesense-developer-signature-copy { animation: codesense-signature-lock 90ms ease-out 1; }
-@keyframes codesense-signature-slice { 50% { transform: translateX(var(--signature-channel-offset-inverse, 0px)); } }
-@keyframes codesense-signature-lock { 0% { transform: translate3d(2px, 0, 0); filter: brightness(1.14); } 58% { transform: translate3d(-1px, 0, 0); filter: brightness(1.32); } 100% { transform: translate3d(0, 0, 0); filter: none; } }
-@media (hover: none), (pointer: coarse) { .codesense-developer-signature-copy { opacity: 0; filter: none; letter-spacing: 0.02em; transform: none; } .codesense-developer-signature-copy::before, .codesense-developer-signature-copy::after { display: none; } .codesense-developer-signature.is-touch-revealed .codesense-developer-signature-copy { opacity: 1; } }
+.codesense-developer-signature-copy { display: inline-flex; align-items: baseline; justify-content: center; white-space: nowrap; pointer-events: none; transform: translate3d(0, var(--signature-offset, 4px), 0); will-change: transform; }
+.codesense-developer-signature-character { color: color-mix(in oklab, var(--foreground) 88%, var(--primary)); font-size: 0.72rem; font-weight: 600; letter-spacing: var(--signature-tracking, 0.1em); opacity: clamp(0, calc((var(--signature-reveal, 0) - var(--signature-character-delay)) * 6), 1); filter: blur(calc((1 - var(--signature-reveal, 0)) * 5px)); transition: opacity 140ms ease-out, filter 180ms ease-out, letter-spacing 180ms ease-out; }
+.codesense-developer-signature-character:nth-child(-n + 12) { color: var(--muted-foreground); font-size: 0.7rem; font-weight: 500; }
+html[data-signature-full] .codesense-developer-signature-copy { animation: codesense-signature-lock 140ms ease-out 1; }
+@keyframes codesense-signature-lock { 0% { transform: translate3d(1px, 0, 0); } 100% { transform: translate3d(0, 0, 0); } }
+@media (hover: none), (pointer: coarse) { .codesense-developer-signature-copy { transform: none; } .codesense-developer-signature-character { opacity: 0; filter: none; letter-spacing: 0.02em; } .codesense-developer-signature.is-touch-revealed .codesense-developer-signature-character { opacity: 1; } }
 .codesense-landing-grid { opacity: 0.38; mask-image: linear-gradient(to bottom, black, black 62%, transparent 94%); }
 .codesense-background-lines { color: color-mix(in oklab, var(--muted-foreground) 30%, transparent); opacity: 0.46; }
 .codesense-node { position: absolute; width: 5px; height: 5px; border: 1px solid currentColor; background: var(--background); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 5%, transparent); }
@@ -286,6 +280,6 @@ html[data-signature-full] .codesense-developer-signature-copy { animation: codes
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   .codesense-main-preview, .codesense-file-context, .codesense-context-ready, .codesense-pipeline, .codesense-scene-aura { transform: none !important; }
-  .codesense-developer-signature-copy { filter: none; letter-spacing: 0.02em; transform: none; transition: opacity 0.01ms !important; }
-  .codesense-developer-signature-copy::before, .codesense-developer-signature-copy::after { display: none; }
+  .codesense-developer-signature-copy { transform: none; }
+  .codesense-developer-signature-character { opacity: 1; filter: none; letter-spacing: 0.02em; transition: none; }
 }

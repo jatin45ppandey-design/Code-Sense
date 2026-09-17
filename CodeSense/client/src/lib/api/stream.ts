@@ -10,6 +10,28 @@ interface StreamHandlers {
   onDone?: () => void;
 }
 
+function streamEventError(payload: string) {
+  try {
+    const body = JSON.parse(payload) as {
+      status?: unknown;
+      message?: unknown;
+      error?: unknown;
+    };
+    const message =
+      (typeof body.message === "string" && body.message) ||
+      (typeof body.error === "string" && body.error) ||
+      "Message failed";
+
+    if (typeof body.status === "number") {
+      return new ApiError(body.status, message);
+    }
+
+    return new Error(message);
+  } catch {
+    return new Error(payload || "Message failed");
+  }
+}
+
 async function readStreamError(response: Response) {
   try {
     const body = (await response.json()) as {
@@ -196,7 +218,9 @@ export async function streamChatMessage(
       }
 
       case "error": {
-        throw new Error(payload || "Message failed");
+        // Preserve a structured status when the backend provides one so the
+        // caller can present a useful, safe recovery message.
+        throw streamEventError(payload);
       }
 
       default: {

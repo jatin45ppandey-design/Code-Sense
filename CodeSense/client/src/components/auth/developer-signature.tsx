@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 
 export type DeveloperSignatureHandle = {
   updatePointer: (point: { x: number; y: number }) => void;
@@ -9,6 +9,20 @@ export type DeveloperSignatureHandle = {
 const OUTER_RADIUS = 180;
 const INNER_RADIUS = 62;
 const FULL_REVEAL_HOLD = 750;
+const CHARACTER_DELAYS = [0.12, 0.28, 0.19, 0.38, 0.24, 0.46, 0.32, 0.53, 0.41, 0.62, 0.5, 0.68, 0.58, 0.76, 0.66, 0.84, 0.71, 0.91, 0.79, 0.96, 0.86, 0.99, 0.9, 1, 0.94];
+const CREDIT = "Developed by Jatin Pandey";
+
+function CreditText() {
+  return CREDIT.split("").map((character, index) => (
+    <span
+      key={`${character}-${index}`}
+      className="codesense-developer-signature-character"
+      style={{ "--signature-character-delay": CHARACTER_DELAYS[index] ?? 0.84 } as CSSProperties}
+    >
+      {character === " " ? "\u00a0" : character}
+    </span>
+  ));
+}
 
 export const DeveloperSignature = forwardRef<DeveloperSignatureHandle>(function DeveloperSignature(_, ref) {
   const zone = useRef<HTMLDivElement>(null);
@@ -27,14 +41,6 @@ export const DeveloperSignature = forwardRef<DeveloperSignatureHandle>(function 
     element.style.setProperty("--signature-blur", `${(8 * (1 - clamped)).toFixed(2)}px`);
     element.style.setProperty("--signature-offset", `${(4 * (1 - clamped)).toFixed(2)}px`);
     element.style.setProperty("--signature-tracking", `${(0.1 - (0.08 * clamped)).toFixed(3)}em`);
-    const decodeIn = Math.max(0, Math.min(1, (clamped - 0.25) / 0.2));
-    const decodeOut = Math.max(0, Math.min(1, (0.95 - clamped) / 0.25));
-    const decodeIntensity = decodeIn * decodeOut;
-    element.style.setProperty("--signature-glitch-opacity", `${(0.26 * decodeIntensity).toFixed(3)}`);
-    element.style.setProperty("--signature-channel-offset", `${(2 * decodeIntensity).toFixed(2)}px`);
-    element.style.setProperty("--signature-channel-offset-inverse", `${(-1.5 * decodeIntensity).toFixed(2)}px`);
-    element.style.setProperty("--signature-slice-offset", `${(1.2 * decodeIntensity).toFixed(2)}px`);
-    element.toggleAttribute("data-signature-decoding", decodeIntensity > 0.02);
     document.documentElement.style.setProperty("--signature-proximity", clamped.toFixed(3));
     document.documentElement.style.setProperty("--signature-cursor-growth", `${(4 * clamped).toFixed(2)}px`);
     document.documentElement.style.setProperty("--signature-orbit-duration", `${(8 + (3 * clamped)).toFixed(2)}s`);
@@ -90,7 +96,6 @@ export const DeveloperSignature = forwardRef<DeveloperSignatureHandle>(function 
       document.documentElement.style.removeProperty("--signature-orbit-duration");
       document.documentElement.style.removeProperty("--signature-tick-opacity");
       document.documentElement.removeAttribute("data-signature-full");
-      zoneElement?.removeAttribute("data-signature-decoding");
       window.removeEventListener("blur", hideOnBlur);
       document.removeEventListener("pointerdown", closeTouchReveal);
     };
@@ -103,7 +108,7 @@ export const DeveloperSignature = forwardRef<DeveloperSignatureHandle>(function 
   return (
     <div ref={zone} data-signature-zone className={`codesense-developer-signature ${touchRevealed ? "is-touch-revealed" : ""}`}>
       <button type="button" tabIndex={-1} className="codesense-developer-signature-zone" aria-label="Reveal developer credit" onPointerDown={handlePointerDown} onClick={() => { if (touchPointer.current) setTouchRevealed((revealed) => !revealed); }}>
-        <span className="codesense-developer-signature-copy" data-credit="Developed by Jatin Pandey"><span>Developed by</span><strong>Jatin Pandey</strong></span>
+        <span className="codesense-developer-signature-copy" aria-hidden="true"><CreditText /></span>
       </button>
     </div>
   );

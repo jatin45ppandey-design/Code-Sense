@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { ChatComposer } from "@/components/chat/chat-composer";
+import { ChatFailureDialog } from "@/components/chat/chat-failure-dialog";
 import { ChatMessages } from "@/components/chat/chat-messages";
 import { SessionList } from "@/components/chat/session-list";
 import { ErrorState } from "@/components/shared/query-state";
@@ -25,6 +26,7 @@ export function ChatView({ repositoryId }: { repositoryId: string }) {
   const create = useCreateChatSession(repositoryId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobileSessionsOpen, setMobileSessionsOpen] = useState(false);
+  const [restoreRequest, setRestoreRequest] = useState<{ id: number; content: string } | null>(null);
   const attemptedCreate = useRef(false);
   const activeId = selectedId ?? sessions.data?.[0]?.id ?? null;
   const messages = useChatMessages(activeId);
@@ -34,6 +36,11 @@ export function ChatView({ repositoryId }: { repositoryId: string }) {
   const selectSession = (sessionId: string) => {
     stream.stop();
     setSelectedId(sessionId);
+  };
+  const restoreFailedPrompt = () => {
+    if (!stream.failedPrompt) return;
+    setRestoreRequest({ id: Date.now(), content: stream.failedPrompt });
+    stream.clearError();
   };
 
   useEffect(() => {
@@ -72,7 +79,8 @@ export function ChatView({ repositoryId }: { repositoryId: string }) {
           <Sheet open={mobileSessionsOpen} onOpenChange={setMobileSessionsOpen}><SheetContent side="left" className="flex w-[min(22rem,90vw)] flex-col p-0 lg:hidden"><SheetHeader className="border-b px-4 py-4 text-left"><SheetTitle>Recent questions</SheetTitle></SheetHeader><SessionList repositoryId={repo.id} selectedId={activeId} drawer onSelect={(sessionId) => { selectSession(sessionId); setMobileSessionsOpen(false); }} /></SheetContent></Sheet>
           <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <ChatMessages repository={repo} messages={messages.data ?? []} streamText={hasActiveStream ? stream.streamText : ""} assistantMessage={hasActiveStream ? stream.assistantMessage : null} loading={messages.isLoading || (!activeId && create.isPending)} waitingForFirstToken={hasActiveStream && stream.waitingForFirstToken} loadingStage={stream.loadingStage} isStreaming={hasActiveStream && stream.isStreaming} isComplete={hasActiveStream && stream.isComplete} streamError={hasActiveStream && stream.isError ? stream.error : null} onStarterPrompt={stream.send} starterDisabled={!activeId || (hasActiveStream && stream.streaming)} />
-            <ChatComposer disabled={!activeId} streaming={hasActiveStream && stream.streaming} error={(hasActiveStream ? stream.error : null) || messages.error?.message || sessions.error?.message || create.error?.message} onSend={stream.send} onStop={stream.stop} />
+            <ChatComposer disabled={!activeId} streaming={hasActiveStream && stream.streaming} error={messages.error?.message || sessions.error?.message || create.error?.message} restoreRequest={restoreRequest} onSend={stream.send} onStop={stream.stop} />
+            <ChatFailureDialog failure={hasActiveStream ? stream.failure : null} failedPrompt={hasActiveStream ? stream.failedPrompt : null} onClose={stream.clearError} onTryAgain={restoreFailedPrompt} />
           </section>
         </div>
       )}
