@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 export type DeveloperSignatureHandle = {
   updatePointer: (point: { x: number; y: number }) => void;
@@ -9,19 +9,67 @@ export type DeveloperSignatureHandle = {
 const OUTER_RADIUS = 180;
 const INNER_RADIUS = 62;
 const FULL_REVEAL_HOLD = 750;
-const CHARACTER_DELAYS = [0.12, 0.28, 0.19, 0.38, 0.24, 0.46, 0.32, 0.53, 0.41, 0.62, 0.5, 0.68, 0.58, 0.76, 0.66, 0.84, 0.71, 0.91, 0.79, 0.96, 0.86, 0.99, 0.9, 1, 0.94];
-const CREDIT = "Developed by Jatin Pandey";
+const CREDIT_PREFIX = "Developed By";
+const DEVELOPER_NAME = "Jatin Pandey";
+const SCRAMBLE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*";
+const SCRAMBLE_DURATION = 180;
+const SCRAMBLE_STAGGER = 34;
 
-function CreditText() {
-  return CREDIT.split("").map((character, index) => (
+function ScrambleText({ text, active }: { text: string; active: boolean }) {
+  const [displayedText, setDisplayedText] = useState(text);
+  const frame = useRef<number | null>(null);
+
+  const cancelAnimation = useCallback(() => {
+    if (frame.current !== null) window.cancelAnimationFrame(frame.current);
+    frame.current = null;
+  }, []);
+
+  const scramble = useCallback(() => {
+    cancelAnimation();
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setDisplayedText(text);
+      return;
+    }
+
+    const startedAt = performance.now();
+    const update = (now: number) => {
+      const elapsed = now - startedAt;
+      setDisplayedText(text.split("").map((character, index) => {
+        if (character === " " || elapsed >= index * SCRAMBLE_STAGGER + SCRAMBLE_DURATION) return character;
+        return SCRAMBLE_CHARACTERS[Math.floor(Math.random() * SCRAMBLE_CHARACTERS.length)];
+      }).join(""));
+      if (elapsed < text.length * SCRAMBLE_STAGGER + SCRAMBLE_DURATION) {
+        frame.current = window.requestAnimationFrame(update);
+      } else {
+        frame.current = null;
+        setDisplayedText(text);
+      }
+    };
+    frame.current = window.requestAnimationFrame(update);
+  }, [cancelAnimation, text]);
+
+  useEffect(() => {
+    if (active) {
+      frame.current = window.requestAnimationFrame(scramble);
+    } else {
+      cancelAnimation();
+      frame.current = window.requestAnimationFrame(() => setDisplayedText(text));
+    }
+    return cancelAnimation;
+  }, [active, cancelAnimation, scramble, text]);
+
+  useEffect(() => cancelAnimation, [cancelAnimation]);
+
+  return (
     <span
-      key={`${character}-${index}`}
-      className="codesense-developer-signature-character"
-      style={{ "--signature-character-delay": CHARACTER_DELAYS[index] ?? 0.84 } as CSSProperties}
+      className={`codesense-developer-signature-name inline-block pointer-events-none ${active ? "is-visible" : ""}`}
+      aria-hidden={!active}
     >
-      {character === " " ? "\u00a0" : character}
+      {displayedText.split("").map((character, index) => (
+        <span key={`${index}-${character}`} aria-hidden="true">{character === " " ? "\u00a0" : character}</span>
+      ))}
     </span>
-  ));
+  );
 }
 
 export const DeveloperSignature = forwardRef<DeveloperSignatureHandle>(function DeveloperSignature(_, ref) {
@@ -30,8 +78,7 @@ export const DeveloperSignature = forwardRef<DeveloperSignatureHandle>(function 
   const currentProgress = useRef(0);
   const targetProgress = useRef(0);
   const fullHoldUntil = useRef(0);
-  const touchPointer = useRef(false);
-  const [touchRevealed, setTouchRevealed] = useState(false);
+  const [signatureHovered, setSignatureHovered] = useState(false);
 
   const writeProgress = useCallback((progress: number) => {
     const element = zone.current;
@@ -48,12 +95,16 @@ export const DeveloperSignature = forwardRef<DeveloperSignatureHandle>(function 
   }, []);
 
   const settleProgress = useCallback(() => {
-    const difference = targetProgress.current - currentProgress.current;
-    currentProgress.current += difference * (difference < 0 ? 0.25 : 0.18);
-    if (Math.abs(difference) < 0.003) currentProgress.current = targetProgress.current;
-    writeProgress(currentProgress.current);
-    if (currentProgress.current !== targetProgress.current) frame.current = window.requestAnimationFrame(settleProgress);
-    else frame.current = null;
+    function tick() {
+      const difference = targetProgress.current - currentProgress.current;
+      currentProgress.current += difference * (difference < 0 ? 0.25 : 0.18);
+      if (Math.abs(difference) < 0.003) currentProgress.current = targetProgress.current;
+      writeProgress(currentProgress.current);
+      if (currentProgress.current !== targetProgress.current) frame.current = window.requestAnimationFrame(tick);
+      else frame.current = null;
+    }
+
+    tick();
   }, [writeProgress]);
 
   const setTargetProgress = useCallback((progress: number) => {
@@ -77,18 +128,12 @@ export const DeveloperSignature = forwardRef<DeveloperSignatureHandle>(function 
   }), [setTargetProgress]);
 
   useEffect(() => {
-    const zoneElement = zone.current;
     const hideOnBlur = () => {
       fullHoldUntil.current = 0;
       document.documentElement.removeAttribute("data-signature-full");
       setTargetProgress(0);
     };
-    const closeTouchReveal = (event: PointerEvent) => {
-      if (zoneElement && !zoneElement.contains(event.target as Node)) setTouchRevealed(false);
-    };
-
     window.addEventListener("blur", hideOnBlur);
-    document.addEventListener("pointerdown", closeTouchReveal);
     return () => {
       if (frame.current !== null) window.cancelAnimationFrame(frame.current);
       document.documentElement.style.removeProperty("--signature-proximity");
@@ -97,18 +142,27 @@ export const DeveloperSignature = forwardRef<DeveloperSignatureHandle>(function 
       document.documentElement.style.removeProperty("--signature-tick-opacity");
       document.documentElement.removeAttribute("data-signature-full");
       window.removeEventListener("blur", hideOnBlur);
-      document.removeEventListener("pointerdown", closeTouchReveal);
     };
   }, [setTargetProgress]);
 
-  const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    touchPointer.current = event.pointerType === "touch";
+  const handlePointerEnter = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType === "touch") return;
+    setSignatureHovered(true);
+  };
+
+  const handlePointerLeave = () => {
+    setSignatureHovered(false);
   };
 
   return (
-    <div ref={zone} data-signature-zone className={`codesense-developer-signature ${touchRevealed ? "is-touch-revealed" : ""}`}>
-      <button type="button" tabIndex={-1} className="codesense-developer-signature-zone" aria-label="Reveal developer credit" onPointerDown={handlePointerDown} onClick={() => { if (touchPointer.current) setTouchRevealed((revealed) => !revealed); }}>
-        <span className="codesense-developer-signature-copy" aria-hidden="true"><CreditText /></span>
+    <div ref={zone} data-signature-zone className={`codesense-developer-signature ${signatureHovered ? "is-hovered" : ""}`}>
+      <button type="button" tabIndex={-1} className="codesense-developer-signature-zone" aria-label={`${CREDIT_PREFIX} ${DEVELOPER_NAME}`} onPointerEnter={handlePointerEnter} onPointerLeave={handlePointerLeave} onFocus={() => setSignatureHovered(true)} onBlur={() => setSignatureHovered(false)}>
+        <span className="codesense-developer-signature-copy" aria-hidden="true">
+          <span className="codesense-developer-signature-bracket codesense-developer-signature-bracket-left">&lt;</span>
+          <span className="codesense-developer-signature-slash">/</span>
+          <span className="codesense-developer-signature-bracket codesense-developer-signature-bracket-right">&gt;</span>
+          <span className="codesense-developer-signature-copy-content"><span className="codesense-developer-signature-prefix">{CREDIT_PREFIX}</span><ScrambleText text={DEVELOPER_NAME} active={signatureHovered} /></span>
+        </span>
       </button>
     </div>
   );

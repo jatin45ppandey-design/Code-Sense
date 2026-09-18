@@ -114,7 +114,7 @@ class IndexingServiceTest {
     }
 
     @Test
-    void cleansPartialVectorsAndMarksFailedWhenVectorWriteFails() {
+    void preservesPartialVectorsAndMarksFailedWhenVectorWriteFails() {
         String path = "src/App.java";
         String commitSha = "abc123";
         Document document = new Document("class App {}", Map.of("repositoryId", repositoryId.toString()));
@@ -133,7 +133,7 @@ class IndexingServiceTest {
 
         indexingService.indexAsync(repositoryId, userId);
 
-        verify(vectorStore, org.mockito.Mockito.times(2)).delete(any(Filter.Expression.class));
+        verify(vectorStore).delete(any(Filter.Expression.class));
         assertEquals(IndexStatus.FAILED, repository.getIndexStatus());
         assertEquals(0, repository.getChunkCount());
         assertEquals("previous-sha", repository.getIndexedCommitSha());

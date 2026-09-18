@@ -152,14 +152,28 @@ body {
 .codesense-auth-transition-panel { width: min(100%, 24rem); border: 1px solid color-mix(in oklab, var(--border) 86%, transparent); border-radius: 1rem; background: color-mix(in oklab, var(--card) 94%, transparent); padding: 2rem 1.5rem; box-shadow: 0 20px 50px color-mix(in oklab, var(--foreground) 15%, transparent); }
 .codesense-auth-reactor { position: relative; display: grid; width: 5.5rem; height: 5.5rem; place-items: center; border: 1px solid color-mix(in oklab, var(--primary) 48%, transparent); border-radius: 999px; background: radial-gradient(circle, color-mix(in oklab, var(--primary) 12%, transparent), transparent 67%); }
 .codesense-auth-reactor::before { position: absolute; width: 6.5rem; height: 6.5rem; border: 1px dashed color-mix(in oklab, var(--primary) 35%, transparent); border-radius: 999px; content: ""; }
-.codesense-developer-signature { position: relative; z-index: 20; display: grid; width: 4rem; height: 2.5rem; margin: 0.875rem auto 0; place-items: center; }
-.codesense-developer-signature-zone { display: grid; width: 4rem; height: 2.5rem; place-items: center; border: 0; background: transparent; padding: 0; color: var(--foreground); }
-.codesense-developer-signature-copy { display: inline-flex; align-items: baseline; justify-content: center; white-space: nowrap; pointer-events: none; transform: translate3d(0, var(--signature-offset, 4px), 0); will-change: transform; }
-.codesense-developer-signature-character { color: color-mix(in oklab, var(--foreground) 88%, var(--primary)); font-size: 0.72rem; font-weight: 600; letter-spacing: var(--signature-tracking, 0.1em); opacity: clamp(0, calc((var(--signature-reveal, 0) - var(--signature-character-delay)) * 6), 1); filter: blur(calc((1 - var(--signature-reveal, 0)) * 5px)); transition: opacity 140ms ease-out, filter 180ms ease-out, letter-spacing 180ms ease-out; }
-.codesense-developer-signature-character:nth-child(-n + 12) { color: var(--muted-foreground); font-size: 0.7rem; font-weight: 500; }
+.codesense-developer-signature { position: relative; z-index: 20; display: grid; width: min(22rem, calc(100vw - 2rem)); height: 2.5rem; margin: 0.875rem auto 0; place-items: center; }
+.codesense-developer-signature-zone { display: grid; width: 100%; height: 2.5rem; place-items: center; border: 0; background: transparent; padding: 0; color: var(--foreground); pointer-events: auto; }
+.codesense-developer-signature-copy { position: relative; display: block; width: 100%; height: 2.5rem; pointer-events: none; transform: translate3d(0, var(--signature-offset, 4px), 0); will-change: transform; }
+.codesense-developer-signature-bracket, .codesense-developer-signature-slash, .codesense-developer-signature-copy-content { position: absolute; top: 50%; transform: translateY(-50%); white-space: nowrap; }
+.codesense-developer-signature-bracket { color: color-mix(in oklab, var(--muted-foreground) 62%, transparent); font-family: var(--font-geist-mono); font-size: 0.8rem; transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1); }
+.codesense-developer-signature-bracket-left { left: calc(50% - 1.1rem); }
+.codesense-developer-signature-bracket-right { right: calc(50% - 1.1rem); }
+.codesense-developer-signature-slash { left: 50%; color: color-mix(in oklab, var(--muted-foreground) 62%, transparent); font-family: var(--font-geist-mono); font-size: 0.8rem; opacity: 0.72; transform: translate(-50%, -50%) scale(1); transition: opacity 190ms ease-out, transform 190ms ease-out; }
+.codesense-developer-signature-copy-content { left: 50%; display: inline-flex; align-items: baseline; gap: 0.75rem; opacity: 0; transform: translate(-50%, -50%) scale(0.98); transition: opacity 260ms ease-out 100ms, transform 360ms ease-out 100ms; }
+.codesense-developer-signature.is-hovered .codesense-developer-signature-bracket-left { transform: translate(-7.75rem, -50%); }
+.codesense-developer-signature.is-hovered .codesense-developer-signature-bracket-right { transform: translate(7.75rem, -50%); }
+.codesense-developer-signature.is-hovered .codesense-developer-signature-slash { opacity: 0; transform: translate(-50%, -50%) scale(0.75); }
+.codesense-developer-signature.is-hovered .codesense-developer-signature-copy-content { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.codesense-developer-signature-prefix { color: var(--muted-foreground); font-size: 0.7rem; font-weight: 500; }
+.codesense-developer-signature-gap { display: none; }
+.codesense-developer-signature-name { width: 5.25rem; color: color-mix(in oklab, var(--foreground) 88%, var(--primary)); cursor: default !important; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; opacity: 0; pointer-events: none; transition: opacity 100ms ease-out; }
+.codesense-developer-signature-name.is-visible { opacity: 1; }
+.codesense-custom-cursor-active .codesense-landing .codesense-developer-signature-name { cursor: default !important; }
+.codesense-developer-signature-name > span { display: inline-block; min-width: 0.42em; text-align: center; }
 html[data-signature-full] .codesense-developer-signature-copy { animation: codesense-signature-lock 140ms ease-out 1; }
 @keyframes codesense-signature-lock { 0% { transform: translate3d(1px, 0, 0); } 100% { transform: translate3d(0, 0, 0); } }
-@media (hover: none), (pointer: coarse) { .codesense-developer-signature-copy { transform: none; } .codesense-developer-signature-character { opacity: 0; filter: none; letter-spacing: 0.02em; } .codesense-developer-signature.is-touch-revealed .codesense-developer-signature-character { opacity: 1; } }
+@media (hover: none), (pointer: coarse) { .codesense-developer-signature-copy { transform: none; } }
 .codesense-landing-grid { opacity: 0.38; mask-image: linear-gradient(to bottom, black, black 62%, transparent 94%); }
 .codesense-background-lines { color: color-mix(in oklab, var(--muted-foreground) 30%, transparent); opacity: 0.46; }
 .codesense-node { position: absolute; width: 5px; height: 5px; border: 1px solid currentColor; background: var(--background); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 5%, transparent); }
@@ -288,5 +302,6 @@ html[data-signature-full] .codesense-developer-signature-copy { animation: codes
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   .codesense-main-preview, .codesense-file-context, .codesense-context-ready, .codesense-pipeline, .codesense-scene-aura { transform: none !important; }
   .codesense-developer-signature-copy { transform: none; }
-  .codesense-developer-signature-character { opacity: 1; filter: none; letter-spacing: 0.02em; transition: none; }
+  .codesense-developer-signature.is-hovered .codesense-developer-signature-bracket-left { transform: translate(-7.75rem, -50%); }
+  .codesense-developer-signature.is-hovered .codesense-developer-signature-bracket-right { transform: translate(7.75rem, -50%); }
 }

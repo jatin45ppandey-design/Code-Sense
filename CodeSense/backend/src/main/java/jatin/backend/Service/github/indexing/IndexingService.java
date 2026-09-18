@@ -1,19 +1,25 @@
 package jatin.backend.Service.github.indexing;
 
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Semaphore;
 
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import jatin.backend.Entity.IndexStatus;
 import jatin.backend.Entity.Repository;
@@ -32,8 +38,13 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class IndexingService {
-    private static final int VECTOR_BATCH_SIZE = 32;
+    private static final int VECTOR_BATCH_SIZE = 16;
     private static final int PROGRESS_EVERY_N_FILES = 5;
+    private static final int MAX_EMBEDDING_RETRIES = 4;
+    private static final long INITIAL_RETRY_DELAY_MS = 2_000L;
+    private static final long MAX_RETRY_DELAY_MS = 30_000L;
+    private static final long BATCH_DELAY_MS = 750L;
+    private static final Semaphore EMBEDDING_GATE = new Semaphore(1);
 
     private final RepositoryRepo repositoryRepository;
     private final UserService userService;
@@ -115,13 +126,13 @@ public class IndexingService {
                 processed++;
             } catch (Exception exception) {
                 updateProgress(repoId, userId, filePaths.size(), processed,
-                        documents.size(), IndexStatus.INDEXING, null);
+                        0, IndexStatus.INDEXING, null);
                 throw exception;
             }
 
             if (processed % PROGRESS_EVERY_N_FILES == 0 || processed == filePaths.size()) {
                 updateProgress(repoId, userId, filePaths.size(), processed,
-                        documents.size(), IndexStatus.INDEXING, null);
+                        0, IndexStatus.INDEXING, null);
             }
             rateLimiter.pause();
         }
@@ -129,16 +140,19 @@ public class IndexingService {
         if (documents.isEmpty()) {
             throw new BadReqException("Repository contains no indexable text content");
         }
+        log.info("Generated {} chunks from {} processed files for repository {}",
+                documents.size(), processed, repoId);
 
-        boolean replacementStarted = false;
         try {
             deleteVectors(repoId.toString());
-            replacementStarted = true;
-            addInBatches(documents);
-        } catch (Exception exception) {
-            if (replacementStarted) {
-                cleanupPartialVectors(repoId.toString());
+            int indexedChunks = addInBatches(documents, repoId, userId, filePaths.size(), processed);
+            if (indexedChunks != documents.size()) {
+                throw new IllegalStateException("Embedding completed only "
+                        + indexedChunks + " of " + documents.size() + " chunks");
             }
+        } catch (Exception exception) {
+            log.error("Indexing stopped after {} of {} generated chunks for repository {}",
+                    countIndexedChunks(repoId, userId), documents.size(), repoId);
             throw exception;
         }
 
@@ -169,11 +183,152 @@ public class IndexingService {
                 .toList();
     }
 
-    private void addInBatches(List<Document> documents) {
+    private int addInBatches(
+            List<Document> documents,
+            UUID repoId,
+            UUID userId,
+            int totalFiles,
+            int processedFiles) {
+        int indexedChunks = 0;
         for (int start = 0; start < documents.size(); start += VECTOR_BATCH_SIZE) {
             int end = Math.min(start + VECTOR_BATCH_SIZE, documents.size());
-            vectorStore.add(new ArrayList<>(documents.subList(start, end)));
+            embedBatchWithRetry(
+                    new ArrayList<>(documents.subList(start, end)), start, end, repoId);
+            indexedChunks = end;
+            updateProgress(repoId, userId, totalFiles, processedFiles, indexedChunks,
+                    IndexStatus.INDEXING, null);
+            pauseBetweenBatches();
         }
+        return indexedChunks;
+    }
+
+    private void embedBatchWithRetry(
+            List<Document> batch, int start, int end, UUID repoId) {
+        boolean acquired = false;
+        try {
+            EMBEDDING_GATE.acquire();
+            acquired = true;
+            for (int attempt = 1; attempt <= MAX_EMBEDDING_RETRIES; attempt++) {
+                try {
+                    vectorStore.add(batch);
+                    log.debug("Embedded repository {} chunks {}-{} (attempt {})",
+                            repoId, start + 1, end, attempt);
+                    return;
+                } catch (Exception exception) {
+                    ProviderFailure failure = providerFailure(exception);
+                    log.warn(
+                            "Embedding batch failed for repository {} chunks {}-{}: "
+                                    + "status={}, providerMessage={}, retryAttempt={}/{}",
+                            repoId, start + 1, end, failure.status(), failure.message(),
+                            attempt, MAX_EMBEDDING_RETRIES);
+                    if (!failure.retryable() || attempt == MAX_EMBEDDING_RETRIES) {
+                        throw exception;
+                    }
+                    sleepBeforeRetry(failure.retryAfterMs(), attempt);
+                }
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Embedding batch interrupted", exception);
+        } finally {
+            if (acquired) {
+                EMBEDDING_GATE.release();
+            }
+        }
+    }
+
+    private static void sleepBeforeRetry(Long retryAfterMs, int attempt) {
+        long exponential = Math.min(
+                MAX_RETRY_DELAY_MS,
+                INITIAL_RETRY_DELAY_MS * (1L << Math.min(attempt - 1, 4)));
+        long jitter = (long) (Math.random() * Math.min(500L, exponential / 4));
+        long delay = retryAfterMs == null
+                ? Math.min(MAX_RETRY_DELAY_MS, exponential + jitter)
+                : Math.min(MAX_RETRY_DELAY_MS, Math.max(exponential, retryAfterMs));
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Embedding retry interrupted", exception);
+        }
+    }
+
+    private static void pauseBetweenBatches() {
+        try {
+            Thread.sleep(BATCH_DELAY_MS);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Embedding batch delay interrupted", exception);
+        }
+    }
+
+    private static ProviderFailure providerFailure(Throwable error) {
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (current instanceof HttpStatusCodeException exception) {
+                return fromHttp(
+                        exception.getStatusCode().value(),
+                        exception.getResponseHeaders(),
+                        exception.getResponseBodyAsString());
+            }
+            if (current instanceof WebClientResponseException exception) {
+                return fromHttp(
+                        exception.getStatusCode().value(),
+                        exception.getHeaders(),
+                        exception.getResponseBodyAsString());
+            }
+        }
+
+        String message = safeProviderMessage(error.getMessage());
+        String normalized = message.toLowerCase(Locale.ROOT);
+        boolean retryable = normalized.contains("429")
+                || normalized.contains("rate limit")
+                || normalized.contains("quota")
+                || normalized.contains("502")
+                || normalized.contains("503")
+                || normalized.contains("504")
+                || normalized.contains("temporarily unavailable");
+        return new ProviderFailure(null, message, retryable, null);
+    }
+
+    private static ProviderFailure fromHttp(
+            int status, HttpHeaders headers, String responseBody) {
+        boolean retryable = status == 429 || status == 502 || status == 503 || status == 504;
+        Long retryAfterMs = null;
+        if (headers != null && headers.getFirst(HttpHeaders.RETRY_AFTER) != null) {
+            String retryAfter = headers.getFirst(HttpHeaders.RETRY_AFTER);
+            try {
+                retryAfterMs = Long.parseLong(retryAfter) * 1_000L;
+            } catch (NumberFormatException ignored) {
+                try {
+                    retryAfterMs = Math.max(
+                            0L,
+                            ZonedDateTime.parse(retryAfter, DateTimeFormatter.RFC_1123_DATE_TIME)
+                                    .toInstant().toEpochMilli() - Instant.now().toEpochMilli());
+                } catch (RuntimeException ignoredDate) {
+                    // Use exponential backoff when the provider sends an invalid header.
+                }
+            }
+        }
+        return new ProviderFailure(
+                status, safeProviderMessage(responseBody), retryable, retryAfterMs);
+    }
+
+    private static String safeProviderMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return "No provider error message";
+        }
+        return limit(message.replaceAll("(?i)(api[_ -]?key|token|authorization)\\s*[:=]\\s*[^,\\s]+",
+                "$1=[redacted]"), 300);
+    }
+
+    private record ProviderFailure(
+            Integer status, String message, boolean retryable, Long retryAfterMs) {
+    }
+
+    private int countIndexedChunks(UUID repoId, UUID userId) {
+        return repositoryRepository.findByIdAndUserId(repoId, userId)
+                .map(Repository::getChunkCount)
+                .orElse(0);
     }
 
     private void deleteVectors(String repositoryId) {
@@ -181,15 +336,6 @@ public class IndexingService {
                 .eq(RagSettings.METADATA_REPOSITORY_ID, repositoryId)
                 .build();
         vectorStore.delete(filter);
-    }
-
-    private void cleanupPartialVectors(String repositoryId) {
-        try {
-            deleteVectors(repositoryId);
-        } catch (Exception cleanupError) {
-            log.error("Could not clean partial vectors for repository {} ({})",
-                    repositoryId, cleanupError.getClass().getSimpleName());
-        }
     }
 
     private void updateProgress(
@@ -238,8 +384,6 @@ public class IndexingService {
     private void markFailed(UUID repoId, UUID userId, String message) {
         repositoryRepository.findByIdAndUserId(repoId, userId).ifPresent(repo -> {
             repo.setIndexStatus(IndexStatus.FAILED);
-            repo.setChunkCount(0);
-            repo.setIndexedAt(null);
             repo.setErrorMessage(limit(message, 500));
             repositoryRepository.save(repo);
         });
