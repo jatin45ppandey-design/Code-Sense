@@ -34,7 +34,7 @@ export function RepositoryCard({ repository }: { repository: RepositoryResponse 
       </div>
       {repository.indexStatus === "INDEXING" && <div className="mt-4"><div className="mb-1.5 flex justify-between text-[11px] text-muted-foreground"><span>Processing files</span><span>{repository.filesProcessed}/{repository.filesTotal || "—"}</span></div><Progress value={repository.filesTotal ? progress : null} /></div>}
       {repository.indexStatus === "FAILED" && <p className="mt-3 rounded-md bg-destructive/7 px-2.5 py-2 text-xs text-destructive">The latest indexing attempt failed. Retry to try again.</p>}
-      <div className="mt-auto flex items-center gap-2 pt-5">
+      <div className="mt-auto flex flex-wrap items-center gap-2 pt-5">
         <Button variant="outline" nativeButton={false} render={<Link href={`/repositories/${repository.id}`} />}>Details</Button>
         {repository.indexStatus === "READY" ? (
           <Button nativeButton={false} render={<Link href={`/chat/${repository.id}`} />}><MessageSquareText data-icon="inline-start" /> Ask</Button>

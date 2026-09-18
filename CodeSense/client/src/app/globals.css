@@ -106,6 +106,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   min-height: 100svh;
+  overflow-x: hidden;
 }
 ::selection { background: color-mix(in oklab, var(--primary) 24%, transparent); }
 
@@ -259,6 +260,12 @@ html[data-signature-full] .codesense-developer-signature-copy { animation: codes
 @media (max-width: 639px) {
   .codesense-main-preview { transform: none; }
   .codesense-background-lines { display: none; }
+  .codesense-scene { max-width: 100%; min-width: 0; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  .codesense-main-preview { max-width: 100%; }
+  .workspace-page { min-width: 0; padding: 1.25rem 1rem 2rem; }
+  .list-toolbar > * { min-width: 0; }
+  .list-toolbar > .flex { max-width: 100%; }
+  .repository-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 .markdown-body { min-width: 0; overflow-wrap: anywhere; color: var(--foreground); line-height: 1.72; }
